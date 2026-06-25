@@ -1,14 +1,18 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
-import db from './db.js';
 import QRCode from 'qrcode';
+import { connectDB, Tournament, Participant, Match, HistoryLog } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Connect to MongoDB before starting the server
+await connectDB();
 
 const app = express();
 app.use(express.json());
@@ -90,8 +94,8 @@ wss.on('connection', (ws, req) => {
         // Security check: Only allow updates if user is admin, OR if it is a participant registration during Draft phase
         let isDraft = true;
         try {
-          const currentTour = await db.query('SELECT status FROM tournaments WHERE id = $1', [tId]);
-          isDraft = currentTour.rows.length === 0 || currentTour.rows[0].status === 'Draft';
+          const currentTour = await Tournament.findById(tId).select('status').lean();
+          isDraft = !currentTour || currentTour.status === 'Draft';
         } catch (dbErr) {
           console.warn('DB query for tournament status failed, assuming draft:', dbErr);
         }
@@ -102,7 +106,7 @@ wss.on('connection', (ws, req) => {
           console.warn(`Unauthorized state update attempt on tournament ${tId} (Action: ${data.action})`);
           return;
         }
-        
+
         // 1. Broadcast update to other viewers immediately (excluding sender ws)
         broadcastToTournament(tId, {
           type: 'TOURNAMENT_UPDATE',
@@ -120,7 +124,7 @@ wss.on('connection', (ws, req) => {
         });
       } else if (msg.type === 'TOURNAMENT_STATE_SYNC') {
         const { tournamentId: tId, data } = msg;
-        await db.query('UPDATE tournaments SET state_json = $2 WHERE id = $1', [tId, JSON.stringify(data)]);
+        await Tournament.findByIdAndUpdate(tId, { stateJson: JSON.stringify(data) });
         broadcastToTournament(tId, {
           type: 'TOURNAMENT_STATE_SYNC',
           tournamentId: tId,
@@ -158,66 +162,63 @@ const broadcastToTournament = (tournamentId, message, senderWs = null) => {
 const saveStateToDb = async (id, data) => {
   const { name, participants, matches, status, action, details, stateSnapshot } = data;
   console.log('Saving tournament state', { id, action });
-  
-  await db.query('BEGIN');
-  try {
-    // Save tournament
-    await db.query(
-      'INSERT INTO tournaments (id, name, status, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (id) DO UPDATE SET status = $3, updated_at = NOW()',
-      [id, name || 'Tournament', status]
-    );
 
-    // Save participants
-    await db.query('DELETE FROM participants WHERE tournament_id = $1', [id]);
-    for (const p of participants) {
-      await db.query(
-        'INSERT INTO participants (id, tournament_id, name, company_id, seed) VALUES ($1, $2, $3, $4, $5)',
-        [p.id, id, p.name, p.companyId || p.company_id, p.seed]
-      );
+  // Upsert tournament
+  await Tournament.findByIdAndUpdate(
+    id,
+    { name: name || 'Tournament', status, updatedAt: new Date() },
+    { upsert: true, new: true }
+  );
+
+  // Replace participants
+  await Participant.deleteMany({ tournamentId: id });
+  if (participants && participants.length > 0) {
+    await Participant.insertMany(participants.map(p => ({
+      _id: p.id,
+      tournamentId: id,
+      name: p.name,
+      companyId: p.companyId || p.company_id,
+      seed: p.seed
+    })));
+  }
+
+  // Replace matches
+  await Match.deleteMany({ tournamentId: id });
+  if (matches && matches.length > 0) {
+    await Match.insertMany(matches.map(m => ({
+      _id: m.id,
+      tournamentId: id,
+      round: m.round,
+      matchIndex: m.index,
+      p1Id: m.p1?.id || null,
+      p2Id: m.p2?.id || null,
+      score1: m.score1,
+      score2: m.score2,
+      winnerId: m.winner?.id || null,
+      isLocked: m.isLocked || m.is_locked || false,
+      p1SourceMatchId: m.p1SourceMatchId || m.p1_source_match_id || null,
+      p2SourceMatchId: m.p2SourceMatchId || m.p2_source_match_id || null,
+      destMatchId: m.destMatchId || m.dest_match_id || null,
+      destParam: m.destParam || m.dest_param || null,
+      side: m.side || null,
+      isThirdPlace: m.isThirdPlace || m.is_third_place || false
+    })));
+  }
+
+  // History log
+  if (action) {
+    if (action === 'Reset Tournament') {
+      console.log('Reset Tournament action received: deleting history logs for tournament', id);
+      await HistoryLog.deleteMany({ tournamentId: id });
+    } else {
+      console.log('Inserting history log for action', action);
+      await HistoryLog.create({
+        tournamentId: id,
+        actionType: action,
+        details,
+        stateSnapshot
+      });
     }
-
-    // Save matches
-    await db.query('DELETE FROM matches WHERE tournament_id = $1', [id]);
-    for (const m of matches) {
-      await db.query(
-        `INSERT INTO matches (
-          id, tournament_id, round, match_index, p1_id, p2_id, score1, score2, winner_id, 
-          is_locked, p1_source_match_id, p2_source_match_id, dest_match_id, dest_param, side, is_third_place
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
-        [
-          m.id, id, m.round, m.index, 
-          m.p1?.id || null, m.p2?.id || null, 
-          m.score1, m.score2, m.winner?.id || null, 
-          m.isLocked || m.is_locked || false, 
-          m.p1SourceMatchId || m.p1_source_match_id || null, 
-          m.p2SourceMatchId || m.p2_source_match_id || null, 
-          m.destMatchId || m.dest_match_id || null, 
-          m.destParam || m.dest_param || null, 
-          m.side || null, 
-          m.isThirdPlace || m.is_third_place || false
-        ]
-      );
-    }
-
-    // Add History log
-    if (action) {
-      if (action === 'Reset Tournament') {
-        console.log('Reset Tournament action received: deleting history logs for tournament', id);
-        await db.query('DELETE FROM history_logs WHERE tournament_id = $1', [id]);
-        // No history log inserted for reset to avoid empty snapshot errors
-      } else {
-        console.log('Inserting history log for action', action);
-        await db.query(
-          'INSERT INTO history_logs (tournament_id, action_type, details, state_snapshot) VALUES ($1, $2, $3, $4)',
-          [id, action, details, JSON.stringify(stateSnapshot)]
-        );
-      }
-    }
-
-    await db.query('COMMIT');
-  } catch (err) {
-    await db.query('ROLLBACK');
-    throw err;
   }
 };
 
@@ -226,16 +227,17 @@ const saveStateToDb = async (id, data) => {
 // Get all tournaments
 app.get('/api/tournaments', async (req, res) => {
   try {
-    const result = await db.query(
-      'SELECT t.*, (SELECT COUNT(*) FROM participants p WHERE p.tournament_id = t.id) as player_count FROM tournaments t'
-    );
-    const list = result.rows.map(t => ({
-      id: t.id,
-      name: t.name || 'Tournament',
-      status: t.status || 'Draft',
-      createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
-      playerCount: parseInt(t.player_count) || 0,
-      adminKey: t.admin_key || null
+    const tournaments = await Tournament.find().lean().sort({ createdAt: -1 });
+    const list = await Promise.all(tournaments.map(async t => {
+      const playerCount = await Participant.countDocuments({ tournamentId: t._id });
+      return {
+        id: t._id,
+        name: t.name || 'Tournament',
+        status: t.status || 'Draft',
+        createdAt: t.createdAt ? new Date(t.createdAt).getTime() : Date.now(),
+        playerCount,
+        adminKey: t.adminKey || null
+      };
     }));
     res.json(list);
   } catch (err) {
@@ -268,11 +270,11 @@ app.get('/api/tournament/:id/verify-admin', async (req, res) => {
     return res.json({ valid: false });
   }
   try {
-    const result = await db.query('SELECT admin_key FROM tournaments WHERE id = $1', [id]);
-    if (result.rows.length === 0) {
+    const tour = await Tournament.findById(id).select('adminKey').lean();
+    if (!tour) {
       return res.json({ valid: false });
     }
-    res.json({ valid: result.rows[0].admin_key === adminKey });
+    res.json({ valid: tour.adminKey === adminKey });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -285,11 +287,11 @@ app.get('/api/tournament-by-admin-key', async (req, res) => {
     return res.status(400).json({ error: 'Missing adminKey' });
   }
   try {
-    const result = await db.query('SELECT id, admin_key FROM tournaments WHERE admin_key = $1', [adminKey]);
-    if (result.rows.length === 0) {
+    const tour = await Tournament.findOne({ adminKey }).select('_id adminKey').lean();
+    if (!tour) {
       return res.status(404).json({ error: 'Invalid admin key' });
     }
-    res.json({ id: result.rows[0].id, adminKey: result.rows[0].admin_key });
+    res.json({ id: tour._id, adminKey: tour.adminKey });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -303,10 +305,12 @@ app.post('/api/tournament', async (req, res) => {
   }
   try {
     const adminKey = crypto.randomUUID().replace(/-/g, '') + crypto.randomBytes(8).toString('hex');
-    await db.query(
-      'INSERT INTO tournaments (id, name, status, admin_key) VALUES ($1, $2, $3, $4)',
-      [id, name || 'New Tournament', status || 'Draft', adminKey]
-    );
+    await Tournament.create({
+      _id: id,
+      name: name || 'New Tournament',
+      status: status || 'Draft',
+      adminKey
+    });
     res.json({ success: true, tournament: { id, name, status, adminKey } });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -317,46 +321,38 @@ app.post('/api/tournament', async (req, res) => {
 app.delete('/api/tournament/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query('BEGIN');
-    try {
-      await db.query('DELETE FROM participants WHERE tournament_id = $1', [id]);
-      await db.query('DELETE FROM matches WHERE tournament_id = $1', [id]);
-      await db.query('DELETE FROM history_logs WHERE tournament_id = $1', [id]);
-      await db.query('DELETE FROM tournaments WHERE id = $1', [id]);
-      await db.query('COMMIT');
-    } catch (dbErr) {
-      await db.query('ROLLBACK');
-      throw dbErr;
-    }
+    await Participant.deleteMany({ tournamentId: id });
+    await Match.deleteMany({ tournamentId: id });
+    await HistoryLog.deleteMany({ tournamentId: id });
+    await Tournament.findByIdAndDelete(id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get full state of a tournament
+// Get raw state JSON of a tournament
 app.get('/api/tournament/:id/state', async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await db.query('SELECT state_json FROM tournaments WHERE id = $1', [id]);
-    if (result.rows.length === 0) {
+    const tour = await Tournament.findById(id).select('stateJson').lean();
+    if (!tour) {
       return res.status(404).json({ error: "Tournament not found" });
     }
-    const stateStr = result.rows[0].state_json;
-    const stateObj = stateStr ? JSON.parse(stateStr) : null;
+    const stateObj = tour.stateJson ? JSON.parse(tour.stateJson) : null;
     res.json(stateObj);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Save full state of a tournament
+// Save full state of a tournament (overwrite)
 app.post('/api/tournament/:id/state', async (req, res) => {
   const { id } = req.params;
   const stateObj = req.body;
   try {
     const stateJson = JSON.stringify(stateObj);
-    await db.query('UPDATE tournaments SET state_json = $2 WHERE id = $1', [id, stateJson]);
+    await Tournament.findByIdAndUpdate(id, { stateJson });
 
     // Broadcast update to other WS clients
     broadcastToTournament(id, {
@@ -371,62 +367,68 @@ app.post('/api/tournament/:id/state', async (req, res) => {
   }
 });
 
-// Get a tournament state
+// Get a tournament with participants, matches, and history
 app.get('/api/tournament/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const tourResult = await db.query('SELECT * FROM tournaments WHERE id = $1', [id]);
-    if (tourResult.rows.length === 0) {
+    const tour = await Tournament.findById(id).lean();
+    if (!tour) {
       return res.status(404).json({ error: "Tournament not found" });
     }
 
-    const partResult = await db.query('SELECT * FROM participants WHERE tournament_id = $1 ORDER BY seed', [id]);
-    const matchResult = await db.query('SELECT * FROM matches WHERE tournament_id = $1 ORDER BY round, match_index', [id]);
-    const histResult = await db.query('SELECT * FROM history_logs WHERE tournament_id = $1 ORDER BY created_at', [id]);
+    const participants = await Participant.find({ tournamentId: id }).sort({ seed: 1 }).lean();
+    const matches = await Match.find({ tournamentId: id }).sort({ round: 1, matchIndex: 1 }).lean();
+    const history = await HistoryLog.find({ tournamentId: id }).sort({ createdAt: 1 }).lean();
 
-    // Format DB response keys to camelCase for the frontend store expectations
-    const formattedParticipants = partResult.rows.map(p => ({
-      id: p.id,
+    // Format to camelCase for frontend
+    const formattedParticipants = participants.map(p => ({
+      id: p._id,
       name: p.name,
-      companyId: p.company_id || p.companyId,
+      companyId: p.companyId,
       seed: p.seed
     }));
 
-    const formattedMatches = matchResult.rows.map(m => {
-      // Find player objects
-      const p1 = formattedParticipants.find(p => p.id === m.p1_id) || null;
-      const p2 = formattedParticipants.find(p => p.id === m.p2_id) || null;
-      const winner = formattedParticipants.find(p => p.id === m.winner_id) || null;
-
+    const formattedMatches = matches.map(m => {
+      const p1 = formattedParticipants.find(p => p.id === m.p1Id) || null;
+      const p2 = formattedParticipants.find(p => p.id === m.p2Id) || null;
+      const winner = formattedParticipants.find(p => p.id === m.winnerId) || null;
       return {
-        id: m.id,
+        id: m._id,
         round: m.round,
-        index: m.match_index,
+        index: m.matchIndex,
         p1,
         p2,
-        score1: m.score1 !== null ? parseFloat(m.score1) : null,
-        score2: m.score2 !== null ? parseFloat(m.score2) : null,
+        score1: m.score1 !== null && m.score1 !== undefined ? parseFloat(m.score1) : null,
+        score2: m.score2 !== null && m.score2 !== undefined ? parseFloat(m.score2) : null,
         winner,
-        isLocked: m.is_locked,
-        p1SourceMatchId: m.p1_source_match_id,
-        p2SourceMatchId: m.p2_source_match_id,
-        destMatchId: m.dest_match_id,
-        destParam: m.dest_param,
+        isLocked: m.isLocked,
+        p1SourceMatchId: m.p1SourceMatchId,
+        p2SourceMatchId: m.p2SourceMatchId,
+        destMatchId: m.destMatchId,
+        destParam: m.destParam,
         side: m.side,
-        isThirdPlace: m.is_third_place
+        isThirdPlace: m.isThirdPlace
       };
     });
 
-    const formattedHistory = histResult.rows.map(h => ({
-      timestamp: new Date(h.created_at).getTime(),
+    const formattedHistory = history.map(h => ({
+      timestamp: new Date(h.createdAt).getTime(),
       user: "Admin",
-      action: h.action_type,
+      action: h.actionType,
       details: h.details,
-      stateSnapshot: typeof h.state_snapshot === 'string' ? JSON.parse(h.state_snapshot) : h.state_snapshot
+      stateSnapshot: h.stateSnapshot
     }));
 
     res.json({
-      tournament: tourResult.rows[0],
+      tournament: {
+        id: tour._id,
+        name: tour.name,
+        status: tour.status,
+        adminKey: tour.adminKey,
+        createdAt: tour.createdAt,
+        updatedAt: tour.updatedAt,
+        stateJson: tour.stateJson
+      },
       participants: formattedParticipants,
       matches: formattedMatches,
       history: formattedHistory
@@ -441,11 +443,11 @@ app.post('/api/tournament/:id/save', async (req, res) => {
   const { id } = req.params;
   try {
     const isAdmin = req.query.admin === 'true' || req.body.admin === 'true';
-    
+
     let isDraft = true;
     try {
-      const currentTour = await db.query('SELECT status FROM tournaments WHERE id = $1', [id]);
-      isDraft = currentTour.rows.length === 0 || currentTour.rows[0].status === 'Draft';
+      const currentTour = await Tournament.findById(id).select('status').lean();
+      isDraft = !currentTour || currentTour.status === 'Draft';
     } catch (dbErr) {
       console.warn('DB query for tournament status failed, assuming draft:', dbErr);
     }
@@ -462,10 +464,10 @@ app.post('/api/tournament/:id/save', async (req, res) => {
     broadcastToTournament(id, {
       type: 'TOURNAMENT_UPDATE',
       tournamentId: id,
-      data: { 
-        participants: req.body.participants, 
-        matches: req.body.matches, 
-        status: req.body.status 
+      data: {
+        participants: req.body.participants,
+        matches: req.body.matches,
+        status: req.body.status
       }
     });
 
@@ -486,16 +488,15 @@ app.post('/api/tournament/:id/register', async (req, res) => {
   }
 
   try {
-    const result = await db.query('SELECT state_json FROM tournaments WHERE id = $1', [id]);
-    if (result.rows.length === 0) {
+    const tour = await Tournament.findById(id).select('stateJson').lean();
+    if (!tour) {
       return res.status(404).json({ error: "Tournament not found" });
     }
-    const stateStr = result.rows[0].state_json;
-    if (!stateStr) {
+    if (!tour.stateJson) {
       return res.status(500).json({ error: "Tournament state is empty" });
     }
-    const stateObj = JSON.parse(stateStr);
-    
+    const stateObj = JSON.parse(tour.stateJson);
+
     if (stateObj.status !== 'registration') {
       return res.status(403).json({ error: 'Registration is closed.' });
     }
@@ -514,7 +515,7 @@ app.post('/api/tournament/:id/register', async (req, res) => {
 
     // Save state back
     const stateJson = JSON.stringify(stateObj);
-    await db.query('UPDATE tournaments SET state_json = $2 WHERE id = $1', [id, stateJson]);
+    await Tournament.findByIdAndUpdate(id, { stateJson });
 
     // Broadcast update to other WS clients
     broadcastToTournament(id, {
