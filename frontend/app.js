@@ -661,9 +661,9 @@ function generateBracket() {
   state.bracketSize = size;
 
   // Pad with BYEs up to bracket size
-  const playersList = [...state.players];
+  const playersList = state.players.map((p, idx) => ({ ...p, originalIndex: idx }));
   while (playersList.length < size) {
-    playersList.push({ name: 'BYE', companyId: 'BYE', status: 'bye' });
+    playersList.push({ name: 'BYE', companyId: 'BYE', status: 'bye', originalIndex: playersList.length });
   }
 
   // Seeding distribution: Map players list to standard seeding order positions
@@ -693,10 +693,12 @@ function buildSingleBracket(size, seeded) {
     let winner = null, status = 'pending';
     const p1B = seeded[p1i]?.status === 'bye';
     const p2B = seeded[p2i]?.status === 'bye';
-    if (p1B && p2B) { winner = p1i; status = 'completed'; }
-    else if (p1B)   { winner = p2i; status = 'completed'; }
-    else if (p2B)   { winner = p1i; status = 'completed'; }
-    r0.push({ id: `0-${i}`, players: [p1i, p2i], scores: [0,0], winner, status });
+    const p1Orig = seeded[p1i].originalIndex;
+    const p2Orig = seeded[p2i].originalIndex;
+    if (p1B && p2B) { winner = p1Orig; status = 'completed'; }
+    else if (p1B)   { winner = p2Orig; status = 'completed'; }
+    else if (p2B)   { winner = p1Orig; status = 'completed'; }
+    r0.push({ id: `0-${i}`, players: [p1Orig, p2Orig], scores: [0,0], winner, status });
   }
   rounds.push(r0);
 
@@ -739,10 +741,12 @@ function buildDoubleBracket(size, seeded) {
     let winner = null, status = 'pending';
     const p1B = seeded[p1i]?.status === 'bye';
     const p2B = seeded[p2i]?.status === 'bye';
-    if (p1B && p2B) { winner = p1i; status = 'completed'; }
-    else if (p1B)   { winner = p2i; status = 'completed'; }
-    else if (p2B)   { winner = p1i; status = 'completed'; }
-    wr0.push({ id: `w0-${i}`, players: [p1i, p2i], scores: [0,0], winner, status });
+    const p1Orig = seeded[p1i].originalIndex;
+    const p2Orig = seeded[p2i].originalIndex;
+    if (p1B && p2B) { winner = p1Orig; status = 'completed'; }
+    else if (p1B)   { winner = p2Orig; status = 'completed'; }
+    else if (p2B)   { winner = p1Orig; status = 'completed'; }
+    wr0.push({ id: `w0-${i}`, players: [p1Orig, p2Orig], scores: [0,0], winner, status });
   }
   winnersRounds.push(wr0);
 
@@ -1274,9 +1278,10 @@ function setupZoomPan(containerId, canvasId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  // Reset state
-  zoomScale = 0.75; panX = 40; panY = 50;
-  applyTransform(canvasId);
+  // Reset state and center the view dynamically based on generated bracket size
+  setTimeout(() => {
+    centerBracketView(canvasId, containerId);
+  }, 50);
 
   function applyTf() { applyTransform(canvasId); }
 
@@ -1314,6 +1319,42 @@ function setupZoomPan(containerId, canvasId) {
     panX = e.touches[0].clientX - startDragX; panY = e.touches[0].clientY - startDragY; applyTf();
   }, { passive: true });
   container.addEventListener('touchend', () => { isDragging = false; });
+}
+
+function centerBracketView(canvasId, containerId) {
+  const canvas = document.getElementById(canvasId);
+  const container = document.getElementById(containerId);
+  if (!canvas || !container) return;
+
+  const originalTransform = canvas.style.transform;
+  canvas.style.transform = 'none';
+
+  const containerWidth = container.clientWidth;
+  const containerHeight = container.clientHeight;
+  
+  let contentWidth = canvas.scrollWidth;
+  let contentHeight = canvas.scrollHeight;
+
+  canvas.style.transform = originalTransform;
+
+  if (contentWidth <= 0 || contentHeight <= 0) {
+    zoomScale = 0.75;
+    panX = 40;
+    panY = 50;
+    applyTransform(canvasId);
+    return;
+  }
+
+  const zoomX = (containerWidth * 0.9) / contentWidth;
+  const zoomY = (containerHeight * 0.9) / contentHeight;
+  zoomScale = Math.min(zoomX, zoomY, 1.2);
+  zoomScale = Math.max(zoomScale, 0.2);
+  zoomScale = Math.round(zoomScale * 100) / 100;
+
+  panX = Math.round((containerWidth - contentWidth * zoomScale) / 2);
+  panY = Math.round((containerHeight - contentHeight * zoomScale) / 2);
+
+  applyTransform(canvasId);
 }
 
 function applyTransform(canvasId) {
@@ -2376,8 +2417,7 @@ function setupEventListeners() {
     applyTransform('bracket-canvas');
   });
   document.getElementById('btn-zoom-reset').addEventListener('click', () => {
-    zoomScale = 0.75; panX = 40; panY = 50;
-    applyTransform('bracket-canvas');
+    centerBracketView('bracket-canvas', 'bracket-canvas-container');
   });
 
   // Zoom controls (live view)
@@ -2390,8 +2430,7 @@ function setupEventListeners() {
     applyTransform('live-bracket-canvas');
   });
   document.getElementById('btn-live-zoom-reset').addEventListener('click', () => {
-    zoomScale = 0.75; panX = 40; panY = 50;
-    applyTransform('live-bracket-canvas');
+    centerBracketView('live-bracket-canvas', 'live-bracket-canvas-container');
   });
 
   // Single / Double View Toggles
