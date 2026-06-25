@@ -176,6 +176,7 @@
             <h2 class="panel-title"><i class="fa-solid fa-qrcode"></i> Registration Open</h2>
             <button id="btn-close-registration" class="btn-danger btn-sm">Close Entry</button>
           </div>
+          <div class="qr-competition-name" id="qr-competition-name" style="text-align: center; font-size: 1.15rem; font-weight: 700; margin-top: 0.5rem; margin-bottom: 0.5rem; color: var(--accent-cyan); text-shadow: 0 0 8px rgba(0,210,255,0.3);">Competition Name</div>
           <div class="qr-code-wrapper">
             <div id="qr-container">
               <img id="qr-image" src="" alt="QR Code">
@@ -364,8 +365,11 @@
     <div class="register-card glass-panel">
       <div class="register-header">
         <i class="fa-solid fa-trophy register-icon"></i>
-        <h2>Tournament Entry</h2>
-        <p>Register to join the live tournament bracket.</p>
+        <h2 id="register-competition-title">Tournament Entry</h2>
+        <div id="register-timer-countdown" class="register-countdown-timer hidden">
+          Time remaining: <span id="register-time-left">--</span>
+        </div>
+        <p id="register-competition-desc">Register to join the live tournament bracket.</p>
       </div>
       <div id="registration-form-container">
         <form id="participant-registration-form">

@@ -86,7 +86,7 @@ function connectWebSocket(tid) {
         if (params.has('view') && params.get('view') === 'live') {
           renderLiveView();
         } else if (params.has('register')) {
-          // No need to redraw registration view
+          renderRegistrationView();
         } else {
           renderHostView();
         }
@@ -237,6 +237,7 @@ async function routeApp() {
     }
     switchView('player-registration-view');
     initRegistrationView();
+    renderRegistrationView();
   } else if (!isAdminLoggedIn()) {
     // NOT LOGGED IN — show login page for any admin route
     showLoginView();
@@ -1643,6 +1644,11 @@ function openQRRegistration() {
   const regInput = document.getElementById('registration-url-input');
   if (regInput) regInput.value = regUrl;
 
+  const compNameEl = document.getElementById('qr-competition-name');
+  if (compNameEl && state) {
+    compNameEl.textContent = state.name;
+  }
+
   const qrImg = document.getElementById('qr-image');
   if (qrImg) {
     generateQRCode(regUrl).then(url => {
@@ -1753,6 +1759,98 @@ function showRegMsg(text, type) {
   const form = document.getElementById('participant-registration-form');
   if (box) { box.textContent = text; box.className = `registration-message ${type}`; box.classList.remove('hidden'); }
   if (type === 'success' && form) form.classList.add('hidden');
+}
+
+let clientTimerInterval = null;
+
+function startClientRegistrationTimer() {
+  if (clientTimerInterval) clearInterval(clientTimerInterval);
+  const countdownEl = document.getElementById('register-time-left');
+  const timerContainer = document.getElementById('register-timer-countdown');
+
+  if (!state || !state.registrationTimer || !state.registrationTimer.isActive) {
+    if (timerContainer) timerContainer.classList.add('hidden');
+    return;
+  }
+
+  if (state.registrationTimer.remaining <= 0) {
+    if (timerContainer) timerContainer.classList.add('hidden');
+    return;
+  }
+
+  if (timerContainer) timerContainer.classList.remove('hidden');
+  if (countdownEl) {
+    const rem = state.registrationTimer.remaining;
+    countdownEl.textContent = rem > 60 ? `${Math.floor(rem/60)}m ${rem%60}s` : `${rem}s`;
+  }
+
+  clientTimerInterval = setInterval(() => {
+    if (!state?.registrationTimer?.isActive) {
+      clearInterval(clientTimerInterval);
+      if (timerContainer) timerContainer.classList.add('hidden');
+      return;
+    }
+    
+    state.registrationTimer.remaining--;
+    
+    if (state.registrationTimer.remaining <= 0) {
+      state.registrationTimer.isActive = false;
+      clearInterval(clientTimerInterval);
+      if (timerContainer) timerContainer.classList.add('hidden');
+      renderRegistrationView();
+      return;
+    }
+    
+    if (countdownEl) {
+      const rem = state.registrationTimer.remaining;
+      countdownEl.textContent = rem > 60 ? `${Math.floor(rem/60)}m ${rem%60}s` : `${rem}s`;
+    }
+  }, 1000);
+}
+
+function renderRegistrationView() {
+  const formContainer = document.getElementById('registration-form-container');
+  const titleEl = document.getElementById('register-competition-title');
+  const descEl = document.getElementById('register-competition-desc');
+  const messageBox = document.getElementById('registration-message-box');
+
+  if (state) {
+    if (titleEl) titleEl.textContent = `${state.name} - Entry`;
+    
+    const isRegOpen = state.status === 'registration' && (!state.registrationTimer || !state.registrationTimer.isActive || state.registrationTimer.remaining > 0);
+    
+    if (isRegOpen) {
+      if (formContainer) formContainer.classList.remove('hidden');
+      if (descEl) descEl.textContent = 'Register to join the live tournament bracket.';
+      if (messageBox) messageBox.classList.add('hidden');
+      
+      startClientRegistrationTimer();
+    } else {
+      if (formContainer) formContainer.classList.add('hidden');
+      if (descEl) descEl.textContent = 'Registration has ended or is currently closed.';
+      
+      if (messageBox) {
+        messageBox.textContent = '⚠️ Registration is closed.';
+        messageBox.className = 'registration-message error';
+        messageBox.classList.remove('hidden');
+      }
+      
+      if (clientTimerInterval) {
+        clearInterval(clientTimerInterval);
+        clientTimerInterval = null;
+      }
+      const timerContainer = document.getElementById('register-timer-countdown');
+      if (timerContainer) timerContainer.classList.add('hidden');
+    }
+  } else {
+    if (titleEl) titleEl.textContent = 'Tournament Entry';
+    if (formContainer) formContainer.classList.add('hidden');
+    if (messageBox) {
+      messageBox.textContent = '⚠️ Tournament not found.';
+      messageBox.className = 'registration-message error';
+      messageBox.classList.remove('hidden');
+    }
+  }
 }
 
 // ==========================================================================
