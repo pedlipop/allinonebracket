@@ -1,0 +1,77 @@
+# Apex Bracket – Change Requests Summary
+
+## 1. Fix Bracket Rendering
+
+* Bracket layout is broken and misaligned.
+* Match connections and advancement paths do not render correctly.
+* Round spacing and match positioning need to be fixed.
+
+## 2. Fix Delete Functionality
+
+* Delete button is currently not working.
+* Tournament deletion should remove the tournament from the database and UI.
+* Add confirmation modal before deletion.
+
+## 3. Add Tournament Status Management
+
+* Add an **End Tournament** button.
+* Allow status transitions:
+
+  * Setup
+  * In Progress
+  * Ended
+* Ended tournaments become read-only.
+* Status changes must persist after refresh.
+
+## 4. Add List/Grid View Toggle
+
+* Allow switching between List View and Grid View on the tournament dashboard.
+* Persist user's selected view preference.
+
+## 5. Participant Drag-and-Drop Reseeding
+
+* Allow organizers to drag and drop participants to change seed order.
+* Update seed numbers automatically.
+* Save reseeding to the database.
+* Regenerate bracket seeding based on the new order.
+* Disable reseeding once tournament matches have started.
+
+## 6. Add Generate Bracket Action
+
+* Add a prominent **Generate Bracket** button in the Bracket tab.
+* Available only during Setup status.
+* Generate matchups from current participant seeding.
+* Support automatic BYE generation.
+* Save generated matches and refresh bracket immediately.
+* Prevent regeneration once tournament is In Progress or Ended.
+
+## 7. Tournament Workflow Rules
+
+### Setup
+
+* Edit participants.
+* Drag-and-drop reseeding.
+* Generate/Regenerate bracket.
+
+### In Progress
+
+* Manage match results.
+* No reseeding.
+* No bracket regeneration.
+* Allow End Tournament.
+
+### Ended
+
+* Read-only mode.
+* No edits.
+* No reseeding.
+* No bracket generation.
+* Bracket and results remain viewable.
+
+## Priority Issues
+
+1. Delete button is completely broken.
+2. Bracket rendering/layout is broken.
+3. Generate Bracket workflow is missing.
+4. Tournament status management (End Tournament) is missing.
+5. Participant drag-and-drop reseeding is needed.
