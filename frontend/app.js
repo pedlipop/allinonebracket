@@ -54,8 +54,25 @@ function connectWebSocket(tid) {
   if (socket) {
     try { socket.close(); } catch(e) {}
   }
-  const wsUrl = `ws://${window.location.hostname}:3000?tournamentId=${tid}&admin=true`;
-  socket = new WebSocket(wsUrl);
+  
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  let host = window.location.host;
+  // If running locally, point to port 3000 for the backend server
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    host = `${window.location.hostname}:3000`;
+  }
+  
+  const wsUrl = `${protocol}//${host}?tournamentId=${tid}&admin=true`;
+  try {
+    socket = new WebSocket(wsUrl);
+  } catch (err) {
+    console.warn('Failed to construct WebSocket connection:', err);
+    return;
+  }
+  
+  socket.onerror = (err) => {
+    console.warn('WebSocket connection error (expected if serverless/Vercel handles requests):', err);
+  };
   
   socket.onmessage = (event) => {
     try {
