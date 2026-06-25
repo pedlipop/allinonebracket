@@ -240,7 +240,11 @@ function renderTournamentHub() {
   const list = document.getElementById('tournament-list');
   if (!list) return;
 
-  const ts = Object.values(appData.tournaments).sort((a, b) => b.createdAt - a.createdAt);
+  const ts = Object.values(appData.tournaments).sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at) : new Date(a.createdAt || 0);
+    const dateB = b.created_at ? new Date(b.created_at) : new Date(b.createdAt || 0);
+    return dateB - dateA;
+  });
 
   if (!ts.length) {
     list.innerHTML = '<div class="empty-list-placeholder">No tournaments yet. Click "Create New Tournament" to begin!</div>';
@@ -251,14 +255,16 @@ function renderTournamentHub() {
   ts.forEach(t => {
     const card = document.createElement('div');
     card.className = 'tournament-card glass-panel';
-    const playerCount = (t.players || []).length;
+    const playerCount = t.player_count !== undefined ? t.player_count : (t.players || []).length;
     const statusMap = {
       setup: 'Setup', registration: 'Registration Open',
       running: 'In Progress', paused: 'Paused', completed: 'Completed'
     };
     const typeLabel = t.bracketType === 'double' ? 'Double Elim' : 'Single Elim';
     const sizeLabel = (!t.bracketSizeConfig || t.bracketSizeConfig === 'auto') ? 'Auto Size' : `${t.bracketSizeConfig} Players`;
-    const dateStr = new Date(t.createdAt).toLocaleDateString();
+    
+    const dateVal = t.created_at || t.createdAt;
+    const dateStr = dateVal ? new Date(dateVal).toLocaleDateString() : 'Unknown';
     const statusStr = statusMap[t.status] || 'Setup';
     const statusCls = t.status || 'setup';
 
@@ -289,26 +295,17 @@ function openTournament(id) {
   window.location.search = `?tournamentId=${id}`;
 }
 
-async function deleteTournamentCard(id) {
+let deleteTournamentTargetId = null;
+
+function deleteTournamentCard(id) {
   const t = appData.tournaments[id];
-  if (!t || !confirm(`Delete "${t.name}"? This cannot be undone.`)) return;
+  if (!t) return;
   
-  try {
-    const res = await fetch(`/api/tournament/${id}`, { method: 'DELETE' });
-    if (res.ok) {
-      delete appData.tournaments[id];
-      if (appData.currentId === id) { appData.currentId = null; state = null; }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-      await loadAppData();
-      renderTournamentHub();
-      showToast(`Deleted tournament successfully.`, 'success');
-    } else {
-      throw new Error('Failed to delete tournament on server');
-    }
-  } catch (err) {
-    console.error(err);
-    showToast('Could not delete tournament from server.', 'error');
-  }
+  deleteTournamentTargetId = id;
+  const textEl = document.getElementById('confirm-delete-tournament-text');
+  if (textEl) textEl.textContent = `Are you sure you want to delete "${t.name}"? This cannot be undone.`;
+  
+  document.getElementById('confirm-delete-tournament-modal').classList.remove('hidden');
 }
 
 // ==========================================================================
@@ -1765,6 +1762,7 @@ function setupEventListeners() {
       document.getElementById('participant-edit-modal')?.classList.add('hidden');
       document.getElementById('confirm-reset-modal')?.classList.add('hidden');
       document.getElementById('confirm-delete-modal')?.classList.add('hidden');
+      document.getElementById('confirm-delete-tournament-modal')?.classList.add('hidden');
     }
   });
 
@@ -1899,6 +1897,38 @@ function setupEventListeners() {
   document.getElementById('btn-close-reset-modal').addEventListener('click', () => {
     document.getElementById('confirm-reset-modal').classList.add('hidden');
   });
+
+  // Delete Tournament modal
+  document.getElementById('btn-confirm-delete-tournament').addEventListener('click', async () => {
+    if (deleteTournamentTargetId === null) return;
+    const id = deleteTournamentTargetId;
+    document.getElementById('confirm-delete-tournament-modal').classList.add('hidden');
+    deleteTournamentTargetId = null;
+    
+    try {
+      const res = await fetch(`/api/tournament/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        delete appData.tournaments[id];
+        if (appData.currentId === id) { appData.currentId = null; state = null; }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+        await loadAppData();
+        renderTournamentHub();
+        showToast(`Deleted tournament successfully.`, 'success');
+      } else {
+        throw new Error('Failed to delete tournament on server');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Could not delete tournament from server.', 'error');
+    }
+  });
+
+  const closeDeleteTournamentModal = () => {
+    document.getElementById('confirm-delete-tournament-modal').classList.add('hidden');
+    deleteTournamentTargetId = null;
+  };
+  document.getElementById('btn-cancel-delete-tournament').addEventListener('click', closeDeleteTournamentModal);
+  document.getElementById('btn-close-delete-tournament-modal').addEventListener('click', closeDeleteTournamentModal);
 
   // QR Registration
   document.getElementById('btn-open-registration').addEventListener('click', openQRRegistration);
