@@ -39,6 +39,18 @@ try {
   // Test connection
   await pgPool.query('SELECT NOW()');
   console.log('Connected to PostgreSQL successfully.');
+
+  // Auto-initialize schema if schema.sql exists
+  try {
+    const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+      await pgPool.query(schemaSql);
+      console.log('PostgreSQL schema initialized/verified successfully.');
+    }
+  } catch (schemaErr) {
+    console.error('Failed to auto-initialize PostgreSQL schema:', schemaErr);
+  }
 } catch (err) {
   console.warn('PostgreSQL connection failed. Falling back to local JSON database.');
   useJsonDb = true;
