@@ -5,6 +5,212 @@
 
 const STORAGE_KEY = 'apex_bracket_v2';
 
+// ==========================================================================
+// TRANSLATIONS (i18n)
+// ==========================================================================
+const TRANSLATIONS = {
+  en: {
+    admin_login: "Admin <span>Login</span>",
+    login_subtitle: "Enter your credentials to manage tournaments",
+    username: "Username",
+    password: "Password",
+    enter_username: "Enter username",
+    enter_password: "Enter password",
+    sign_in: "Sign In",
+    tournament_hub: "Tournament Hub",
+    welcome_hub: "Welcome to <span>Apex Bracket</span>",
+    hub_subtitle: "Create a new tournament or continue an existing one",
+    create_new_tournament: "Create New Tournament",
+    create_new_desc: "Start fresh with a new bracket configuration",
+    existing_tournaments: "Existing Tournaments",
+    no_tournaments_yet: "No tournaments created yet.",
+    back_to_hub: "Back to Hub",
+    setup_phase: "Setup Phase",
+    undo: "Undo (Ctrl+Z)",
+    redo: "Redo (Ctrl+Y)",
+    reset_match: "Reset Match",
+    reset_entire_tournament: "Reset Entire Tournament",
+    pause: "Pause",
+    start_tournament: "Start Tournament",
+    tournament_entry: "Tournament Entry",
+    time_remaining: "Time remaining",
+    register_desc: "Register to join the live tournament bracket.",
+    participant_name: "Participant Name",
+    enter_full_name: "Enter your full name",
+    company_id: "Company ID",
+    enter_company_id: "Enter Company ID",
+    submit_registration: "Submit Registration",
+    single_view: "Single View",
+    double_view: "Double View",
+    winners: "Winners",
+    losers: "Losers",
+    zoom_in: "Zoom In",
+    reset_view: "Reset View",
+    zoom_out: "Zoom Out",
+    live: "Live",
+    winners_bracket: "Winners Bracket",
+    losers_bracket: "Losers Bracket",
+    
+    // Statuses
+    running: "In Progress",
+    paused: "Paused",
+    completed: "Completed",
+    setup: "Setup Phase",
+    registration: "Registration Open",
+
+    // Hub meta labels & options
+    double_elim: "Double Elim",
+    single_elim: "Single Elim",
+    auto_size: "Auto Size",
+    players_count: "{count} Players",
+    no_tournaments_msg: 'No tournaments yet. Click "Create New Tournament" to begin!',
+    open: "Open",
+
+    // Bracket labels & headers
+    winners_final: "Winners Final",
+    final: "Final",
+    losers_final: "Losers Final",
+    round_num: "Round {num}",
+    l_round_num: "L-Round {num}",
+    third_place_match: "3rd Place Match",
+    match_num: "Match {num}",
+    fill_slot: "Fill Slot",
+    playing: "Playing",
+    champion: "🏆 Champion",
+    grand_final: "Grand Final",
+    resume: "Resume"
+  },
+  zh: {
+    admin_login: "管理员 <span>登录</span>",
+    login_subtitle: "输入您的凭据以管理赛事",
+    username: "用户名",
+    password: "密码",
+    enter_username: "输入用户名",
+    enter_password: "输入密码",
+    sign_in: "登录",
+    tournament_hub: "赛事中心",
+    welcome_hub: "欢迎使用 <span>Apex Bracket</span>",
+    hub_subtitle: "创建新赛事或继续进行已有赛事",
+    create_new_tournament: "创建新赛事",
+    create_new_desc: "从头开始配置新的对阵表",
+    existing_tournaments: "已有赛事",
+    no_tournaments_yet: "暂无已创建赛事。",
+    back_to_hub: "返回中心",
+    setup_phase: "准备阶段",
+    undo: "撤销 (Ctrl+Z)",
+    redo: "重做 (Ctrl+Y)",
+    reset_match: "重置赛事",
+    reset_entire_tournament: "重置整场赛事",
+    pause: "暂停",
+    start_tournament: "开始赛事",
+    tournament_entry: "赛事登记",
+    time_remaining: "剩余时间",
+    register_desc: "登记加入实时对阵表。",
+    participant_name: "参赛者姓名",
+    enter_full_name: "输入您的姓名",
+    company_id: "工号/公司ID",
+    enter_company_id: "输入工号/公司ID",
+    submit_registration: "提交登记",
+    single_view: "单栏视图",
+    double_view: "双栏视图",
+    winners: "胜者组",
+    losers: "败者组",
+    zoom_in: "放大",
+    reset_view: "重置视图",
+    zoom_out: "缩小",
+    live: "实时",
+    winners_bracket: "胜者组对阵",
+    losers_bracket: "败者组对阵",
+    
+    // Statuses
+    running: "进行中",
+    paused: "已暂停",
+    completed: "已结束",
+    setup: "准备阶段",
+    registration: "登记开放",
+
+    // Hub meta labels & options
+    double_elim: "双败淘汰",
+    single_elim: "单败淘汰",
+    auto_size: "自动适配",
+    players_count: "{count} 参赛者",
+    no_tournaments_msg: '暂无赛事。点击“创建新赛事”开始！',
+    open: "打开",
+
+    // Bracket labels & headers
+    winners_final: "胜者组决赛",
+    final: "决赛",
+    losers_final: "败者组决赛",
+    round_num: "第 {num} 轮",
+    l_round_num: "败者组第 {num} 轮",
+    third_place_match: "三四名决赛",
+    match_num: "对局 {num}",
+    fill_slot: "填充空位",
+    playing: "比赛中",
+    champion: "🏆 冠军",
+    grand_final: "总决赛",
+    resume: "恢复"
+  }
+};
+
+let currentLang = localStorage.getItem('apex_bracket_lang') || 'en';
+
+function getTranslation(key) {
+  if (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) {
+    return TRANSLATIONS[currentLang][key];
+  }
+  if (TRANSLATIONS['en'] && TRANSLATIONS['en'][key]) {
+    return TRANSLATIONS['en'][key];
+  }
+  return key;
+}
+
+function t(key, replacements = {}) {
+  let text = getTranslation(key);
+  Object.keys(replacements).forEach(k => {
+    text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), replacements[k]);
+  });
+  return text;
+}
+
+function translatePage() {
+  document.documentElement.lang = currentLang;
+
+  // Static translations
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const translation = getTranslation(key);
+    if (translation) {
+      el.innerHTML = translation;
+    }
+  });
+
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    const translation = getTranslation(key);
+    if (translation) {
+      el.placeholder = translation;
+    }
+  });
+
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    const translation = getTranslation(key);
+    if (translation) {
+      el.title = translation;
+    }
+  });
+
+  // Highlight active buttons in language selectors
+  document.querySelectorAll('.btn-lang').forEach(btn => {
+    if (btn.getAttribute('data-lang') === currentLang) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
 let appData = {
   currentId: null,
   tournaments: {}
@@ -47,6 +253,7 @@ const RANDOM_NAMES = [
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
+  translatePage();
   setupSync();
   routeApp();
 });
@@ -328,7 +535,7 @@ function renderTournamentHub() {
   });
 
   if (!ts.length) {
-    list.innerHTML = '<div class="empty-list-placeholder">No tournaments yet. Click "Create New Tournament" to begin!</div>';
+    list.innerHTML = `<div class="empty-list-placeholder">${t('no_tournaments_msg')}</div>`;
     return;
   }
 
@@ -337,16 +544,12 @@ function renderTournamentHub() {
     const card = document.createElement('div');
     card.className = 'tournament-card glass-panel';
     const playerCount = t.player_count !== undefined ? t.player_count : (t.players || []).length;
-    const statusMap = {
-      setup: 'Setup', registration: 'Registration Open',
-      running: 'In Progress', paused: 'Paused', completed: 'Completed'
-    };
-    const typeLabel = t.bracketType === 'double' ? 'Double Elim' : 'Single Elim';
-    const sizeLabel = (!t.bracketSizeConfig || t.bracketSizeConfig === 'auto') ? 'Auto Size' : `${t.bracketSizeConfig} Players`;
+    const typeLabel = t.bracketType === 'double' ? getTranslation('double_elim') : getTranslation('single_elim');
+    const sizeLabel = (!t.bracketSizeConfig || t.bracketSizeConfig === 'auto') ? getTranslation('auto_size') : t('players_count', {count: t.bracketSizeConfig});
     
     const dateVal = t.created_at || t.createdAt;
     const dateStr = dateVal ? new Date(dateVal).toLocaleDateString() : 'Unknown';
-    const statusStr = statusMap[t.status] || 'Setup';
+    const statusStr = getTranslation(t.status || 'setup');
     const statusCls = t.status || 'setup';
 
     card.innerHTML = `
@@ -364,7 +567,7 @@ function renderTournamentHub() {
         <span class="status-badge ${statusCls}"><span class="status-dot"></span>${statusStr}</span>
       </div>
       <div class="tc-actions">
-        <button class="btn-primary btn-sm" onclick="openTournament('${t.id}')"><i class="fa-solid fa-arrow-right"></i> Open</button>
+        <button class="btn-primary btn-sm" onclick="openTournament('${t.id}')"><i class="fa-solid fa-arrow-right"></i> ${getTranslation('open')}</button>
         <button class="btn-danger btn-sm" onclick="deleteTournamentCard('${t.id}')"><i class="fa-solid fa-trash"></i></button>
       </div>
     `;
@@ -462,10 +665,10 @@ function renderHostView() {
   if (isActive) {
     const btnPause = document.getElementById('btn-pause');
     if (state.status === 'paused') {
-      btnPause.innerHTML = '<i class="fa-solid fa-play"></i> Resume';
+      btnPause.innerHTML = `<i class="fa-solid fa-play"></i> ${getTranslation('resume')}`;
       btnPause.className = 'btn-glow btn-pause-toggle';
     } else {
-      btnPause.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+      btnPause.innerHTML = `<i class="fa-solid fa-pause"></i> ${getTranslation('pause')}`;
       btnPause.className = 'btn-secondary btn-pause-toggle';
     }
   }
@@ -499,12 +702,12 @@ function updateStatusBadge() {
   const badge = document.getElementById('tournament-status-badge');
   if (!badge || !state) return;
   const cfg = {
-    setup:        { c: 'var(--warning)',        l: 'Setup Phase' },
-    registration: { c: 'var(--accent-cyan)',    l: 'Registration Open' },
-    running:      { c: 'var(--success)',        l: 'In Progress' },
-    paused:       { c: 'var(--warning)',        l: 'Paused' },
-    completed:    { c: '#9c27b0',              l: 'Completed' }
-  }[state.status] || { c: 'var(--warning)', l: 'Setup Phase' };
+    setup:        { c: 'var(--warning)',        l: getTranslation('setup_phase') },
+    registration: { c: 'var(--accent-cyan)',    l: getTranslation('registration') },
+    running:      { c: 'var(--success)',        l: getTranslation('running') },
+    paused:       { c: 'var(--warning)',        l: getTranslation('paused') },
+    completed:    { c: '#9c27b0',              l: getTranslation('completed') }
+  }[state.status] || { c: 'var(--warning)', l: getTranslation('setup_phase') };
   badge.innerHTML = `<span class="status-dot" style="background:${cfg.c};box-shadow:0 0 8px ${cfg.c}"></span>${cfg.l}`;
 }
 
@@ -1198,19 +1401,19 @@ function renderGrandFinal(containerId, isLive) {
   const clickStr = clickable ? `onclick="handleMatchClick('gf','gf-canvas',0,0)"` : '';
 
   container.innerHTML = `
-    <div class="bracket-section-label grand-final-label"><i class="fa-solid fa-crown"></i> Grand Final</div>
+    <div class="bracket-section-label grand-final-label"><i class="fa-solid fa-crown"></i> ${getTranslation('grand_final')}</div>
     <div class="grand-final-wrap">
       <div class="match-node grand-final-node ${gf.status}" id="mn-gf-gf-canvas-0-0" ${clickStr}>
         <div class="match-node-header ${gf.status === 'in-progress' ? 'active-tag' : ''}">
-          ${gf.status === 'in-progress' ? '<i class="fa-solid fa-gamepad"></i> Playing' : '<i class="fa-solid fa-crown"></i> Grand Final'}
+          ${gf.status === 'in-progress' ? `<i class="fa-solid fa-gamepad"></i> ${getTranslation('playing')}` : `<i class="fa-solid fa-crown"></i> ${getTranslation('grand_final')}`}
         </div>
         <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls}" ${clickStr}>
           <span class="team-name">${escapeHTML(p1.name)}</span>
-          <span class="team-score gf-badge">${p1W ? '🏆 Champion' : ''}</span>
+          <span class="team-score gf-badge">${p1W ? getTranslation('champion') : ''}</span>
         </div>
         <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls}" ${clickStr}>
           <span class="team-name">${escapeHTML(p2.name)}</span>
-          <span class="team-score gf-badge">${p2W ? '🏆 Champion' : ''}</span>
+          <span class="team-score gf-badge">${p2W ? getTranslation('champion') : ''}</span>
         </div>
       </div>
     </div>
@@ -2078,12 +2281,12 @@ function renderLiveView() {
   const badge = document.getElementById('live-tournament-status-badge');
   if (badge && state) {
     const cfg = {
-      setup:        { c: 'var(--warning)',     l: 'Setup Phase' },
-      registration: { c: 'var(--accent-cyan)', l: 'Registration Open' },
-      running:      { c: 'var(--success)',     l: 'In Progress' },
-      paused:       { c: 'var(--warning)',     l: 'Paused' },
-      completed:    { c: '#9c27b0',           l: 'Completed' }
-    }[state.status] || { c: 'var(--warning)', l: 'Setup' };
+      setup:        { c: 'var(--warning)',     l: getTranslation('setup_phase') },
+      registration: { c: 'var(--accent-cyan)', l: getTranslation('registration') },
+      running:      { c: 'var(--success)',     l: getTranslation('running') },
+      paused:       { c: 'var(--warning)',     l: getTranslation('paused') },
+      completed:    { c: '#9c27b0',           l: getTranslation('completed') }
+    }[state.status] || { c: 'var(--warning)', l: getTranslation('setup_phase') };
     badge.innerHTML = `<span class="status-dot" style="background:${cfg.c};box-shadow:0 0 8px ${cfg.c}"></span>${cfg.l}`;
   }
 
@@ -2120,6 +2323,32 @@ function setupSync() {
 // EVENT LISTENERS SETUP
 // ==========================================================================
 function setupEventListeners() {
+  // Language switcher event listener
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-lang');
+    if (btn) {
+      const lang = btn.getAttribute('data-lang');
+      if (lang && lang !== currentLang) {
+        currentLang = lang;
+        localStorage.setItem('apex_bracket_lang', lang);
+        translatePage();
+        
+        // Refresh views to translate dynamic parts
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('view') && params.get('view') === 'live') {
+          renderLiveView();
+        } else if (params.has('register')) {
+          renderRegistrationView();
+        } else {
+          if (state) {
+            renderHostView();
+          }
+          renderTournamentHub();
+        }
+      }
+    }
+  });
+
   // Tab navigation
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2788,7 +3017,7 @@ function renderUnifiedDoubleBracket(canvasId, isLive) {
   winnersRow.className = 'unified-bracket-row winners-row';
   const winnersLabel = document.createElement('div');
   winnersLabel.className = 'unified-row-label';
-  winnersLabel.textContent = 'Winners Bracket';
+  winnersLabel.textContent = getTranslation('winners_bracket');
   winnersRow.appendChild(winnersLabel);
 
   const winnersRoundsCont = document.createElement('div');
@@ -2802,7 +3031,7 @@ function renderUnifiedDoubleBracket(canvasId, isLive) {
   losersRow.className = 'unified-bracket-row losers-row';
   const losersLabel = document.createElement('div');
   losersLabel.className = 'unified-row-label';
-  losersLabel.textContent = 'Losers Bracket';
+  losersLabel.textContent = getTranslation('losers_bracket');
   losersRow.appendChild(losersLabel);
 
   const losersRoundsCont = document.createElement('div');
@@ -2818,7 +3047,7 @@ function renderUnifiedDoubleBracket(canvasId, isLive) {
   gfCol.className = 'unified-gf-column';
   const gfLabel = document.createElement('div');
   gfLabel.className = 'unified-row-label';
-  gfLabel.textContent = 'Grand Final';
+  gfLabel.textContent = getTranslation('grand_final');
   gfCol.appendChild(gfLabel);
 
   const gfMatchCont = document.createElement('div');
@@ -2847,10 +3076,10 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
     const isFinal = rIdx === rounds.length - 1;
     if (prefix === 'w') {
       header.textContent = isFinal
-        ? (state.bracket.type === 'double' ? 'Winners Final' : 'Final')
-        : `Round ${rIdx + 1}`;
+        ? (state.bracket.type === 'double' ? getTranslation('winners_final') : getTranslation('final'))
+        : t('round_num', {num: rIdx + 1});
     } else {
-      header.textContent = isFinal ? 'Losers Final' : `L-Round ${rIdx + 1}`;
+      header.textContent = isFinal ? getTranslation('losers_final') : t('l_round_num', {num: rIdx + 1});
     }
     col.appendChild(header);
 
@@ -2862,9 +3091,9 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
       node.className = `match-node ${match.status}`;
       node.id = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
 
-      let hdrHtml = match.isThirdPlace ? '3rd Place Match' : `Match ${mIdx + 1}`;
+      let hdrHtml = match.isThirdPlace ? getTranslation('third_place_match') : t('match_num', {num: mIdx + 1});
       let hdrCls = '';
-      if (match.status === 'in-progress') { hdrHtml = '<i class="fa-solid fa-gamepad"></i> Playing'; hdrCls = 'active-tag'; }
+      if (match.status === 'in-progress') { hdrHtml = `<i class="fa-solid fa-gamepad"></i> ${getTranslation('playing')}`; hdrCls = 'active-tag'; }
 
       const p1W = match.winner === match.players[0] && match.status === 'completed';
       const p2W = match.winner === match.players[1] && match.status === 'completed';
@@ -2876,11 +3105,11 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
       const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
 
       const p1Row = showByeFill && p1IsBye
-        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
+        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> ${getTranslation('fill_slot')}</button>`
         : `<span class="team-name" title="${escapeHTML(p1.name)}">${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>`;
 
       const p2Row = showByeFill && p2IsBye
-        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
+        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> ${getTranslation('fill_slot')}</button>`
         : `<span class="team-name" title="${escapeHTML(p2.name)}">${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>`;
 
       node.innerHTML = `
@@ -2904,7 +3133,7 @@ function renderGrandFinalInto(container, canvasId, isLive) {
 
   const header = document.createElement('div');
   header.className = 'round-title-header';
-  header.textContent = 'Grand Final';
+  header.textContent = getTranslation('grand_final');
   col.appendChild(header);
 
   const p1 = getPlayerInfo(gf.players[0]);
@@ -2914,9 +3143,9 @@ function renderGrandFinalInto(container, canvasId, isLive) {
   node.className = `match-node ${gf.status}`;
   node.id = `mn-gf-${canvasId}-0-0`;
 
-  let hdrHtml = 'Grand Final';
+  let hdrHtml = getTranslation('grand_final');
   let hdrCls = '';
-  if (gf.status === 'in-progress') { hdrHtml = '<i class="fa-solid fa-gamepad"></i> Playing'; hdrCls = 'active-tag'; }
+  if (gf.status === 'in-progress') { hdrHtml = `<i class="fa-solid fa-gamepad"></i> ${getTranslation('playing')}`; hdrCls = 'active-tag'; }
 
   const p1W = gf.winner === gf.players[0] && gf.status === 'completed';
   const p2W = gf.winner === gf.players[1] && gf.status === 'completed';

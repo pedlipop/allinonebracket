@@ -17,25 +17,32 @@
   <!-- ADMIN LOGIN VIEW                           -->
   <!-- ========================================== -->
   <div id="login-view" class="app-view">
+    <div class="floating-lang-container">
+      <div class="lang-selector">
+        <button type="button" class="btn-lang active" data-lang="en">EN</button>
+        <span class="lang-separator">|</span>
+        <button type="button" class="btn-lang" data-lang="zh">中</button>
+      </div>
+    </div>
     <div class="login-container">
       <div class="login-card glass-panel">
         <div class="login-icon">
           <i class="fa-solid fa-shield-halved"></i>
         </div>
-        <h2>Admin <span>Login</span></h2>
-        <p class="login-subtitle">Enter your credentials to manage tournaments</p>
+        <h2 data-i18n="admin_login">Admin <span>Login</span></h2>
+        <p class="login-subtitle" data-i18n="login_subtitle">Enter your credentials to manage tournaments</p>
         <form id="login-form" autocomplete="off">
           <div class="form-group">
-            <label for="login-username"><i class="fa-solid fa-user"></i> Username</label>
-            <input type="text" id="login-username" placeholder="Enter username" required autocomplete="off">
+            <label for="login-username"><i class="fa-solid fa-user"></i> <span data-i18n="username">Username</span></label>
+            <input type="text" id="login-username" data-i18n-placeholder="enter_username" placeholder="Enter username" required autocomplete="off">
           </div>
           <div class="form-group">
-            <label for="login-password"><i class="fa-solid fa-lock"></i> Password</label>
-            <input type="password" id="login-password" placeholder="Enter password" required autocomplete="off">
+            <label for="login-password"><i class="fa-solid fa-lock"></i> <span data-i18n="password">Password</span></label>
+            <input type="password" id="login-password" data-i18n-placeholder="enter_password" placeholder="Enter password" required autocomplete="off">
           </div>
           <p id="login-error" class="login-error hidden"></p>
           <button type="submit" class="btn-glow login-btn">
-            <i class="fa-solid fa-right-to-bracket"></i> Sign In
+            <i class="fa-solid fa-right-to-bracket"></i> <span data-i18n="sign_in">Sign In</span>
           </button>
         </form>
       </div>
@@ -52,30 +59,36 @@
         <h1>Apex<span>Bracket</span></h1>
       </div>
       <div class="header-status">
-        <span class="status-badge"><span class="status-dot" style="background:var(--accent-cyan)"></span> Tournament Hub</span>
+        <span class="status-badge"><span class="status-dot" style="background:var(--accent-cyan)"></span> <span data-i18n="tournament_hub">Tournament Hub</span></span>
       </div>
-      <div class="header-actions"></div>
+      <div class="header-actions">
+        <div class="lang-selector">
+          <button type="button" class="btn-lang active" data-lang="en">EN</button>
+          <span class="lang-separator">|</span>
+          <button type="button" class="btn-lang" data-lang="zh">中</button>
+        </div>
+      </div>
     </header>
 
     <div class="hub-container">
       <div class="hub-hero">
         <div class="hub-hero-icon"><i class="fa-solid fa-trophy"></i></div>
-        <h2>Welcome to <span>Apex Bracket</span></h2>
-        <p>Create a new tournament or continue an existing one</p>
+        <h2 data-i18n="welcome_hub">Welcome to <span>Apex Bracket</span></h2>
+        <p data-i18n="hub_subtitle">Create a new tournament or continue an existing one</p>
       </div>
 
       <div class="hub-actions-row">
         <button id="btn-create-tournament" class="hub-action-card hub-create">
           <i class="fa-solid fa-plus-circle"></i>
-          <h3>Create New Tournament</h3>
-          <p>Start fresh with a new bracket configuration</p>
+          <h3 data-i18n="create_new_tournament">Create New Tournament</h3>
+          <p data-i18n="create_new_desc">Start fresh with a new bracket configuration</p>
         </button>
       </div>
 
       <div class="hub-existing-section">
-        <h3 class="hub-section-title"><i class="fa-solid fa-list-check"></i> Existing Tournaments</h3>
+        <h3 class="hub-section-title"><i class="fa-solid fa-list-check"></i> <span data-i18n="existing_tournaments">Existing Tournaments</span></h3>
         <div id="tournament-list" class="tournament-list">
-          <div class="empty-list-placeholder">No tournaments created yet.</div>
+          <div class="empty-list-placeholder" data-i18n="no_tournaments_yet">No tournaments created yet.</div>
         </div>
       </div>
     </div>
@@ -88,26 +101,31 @@
     <!-- Header -->
     <header class="app-header">
       <div class="header-logo">
-        <button id="btn-back-hub" class="btn-icon" title="Back to Hub" style="margin-right:0.5rem"><i class="fa-solid fa-chevron-left"></i></button>
+        <button id="btn-back-hub" class="btn-icon" data-i18n-title="back_to_hub" title="Back to Hub" style="margin-right:0.5rem"><i class="fa-solid fa-chevron-left"></i></button>
         <i class="fa-solid fa-trophy glow-icon"></i>
         <h1 id="host-tournament-name">Apex<span>Bracket</span></h1>
       </div>
       <div class="header-status">
         <span class="status-badge" id="tournament-status-badge">
-          <span class="status-dot"></span> Setup Phase
+          <span class="status-dot"></span> <span data-i18n="setup_phase">Setup Phase</span>
         </span>
       </div>
       <div class="header-actions">
-        <button id="btn-undo" class="btn-icon" title="Undo (Ctrl+Z)" disabled><i class="fa-solid fa-arrow-rotate-left"></i></button>
-        <button id="btn-redo" class="btn-icon" title="Redo (Ctrl+Y)" disabled><i class="fa-solid fa-arrow-rotate-right"></i></button>
-        <button id="btn-reset-tournament" class="btn-danger btn-sm hidden" title="Reset Entire Tournament">
-          <i class="fa-solid fa-rotate-left"></i> Reset Match
+        <div class="lang-selector" style="margin-right: 0.5rem;">
+          <button type="button" class="btn-lang active" data-lang="en">EN</button>
+          <span class="lang-separator">|</span>
+          <button type="button" class="btn-lang" data-lang="zh">中</button>
+        </div>
+        <button id="btn-undo" class="btn-icon" data-i18n-title="undo" title="Undo (Ctrl+Z)" disabled><i class="fa-solid fa-arrow-rotate-left"></i></button>
+        <button id="btn-redo" class="btn-icon" data-i18n-title="redo" title="Redo (Ctrl+Y)" disabled><i class="fa-solid fa-arrow-rotate-right"></i></button>
+        <button id="btn-reset-tournament" class="btn-danger btn-sm hidden" data-i18n-title="reset_entire_tournament" title="Reset Entire Tournament">
+          <i class="fa-solid fa-rotate-left"></i> <span data-i18n="reset_match">Reset Match</span>
         </button>
         <button id="btn-pause" class="btn-primary btn-pause-toggle hidden">
-          <i class="fa-solid fa-pause"></i> Pause
+          <i class="fa-solid fa-pause"></i> <span data-i18n="pause">Pause</span>
         </button>
         <button id="btn-start" class="btn-glow hidden">
-          <i class="fa-solid fa-play"></i> Start Tournament
+          <i class="fa-solid fa-play"></i> <span data-i18n="start_tournament">Start Tournament</span>
         </button>
       </div>
     </header>
@@ -380,27 +398,34 @@
   <!-- 2. PLAYER REGISTRATION VIEW               -->
   <!-- ========================================== -->
   <div id="player-registration-view" class="app-view">
+    <div class="floating-lang-container">
+      <div class="lang-selector">
+        <button type="button" class="btn-lang active" data-lang="en">EN</button>
+        <span class="lang-separator">|</span>
+        <button type="button" class="btn-lang" data-lang="zh">中</button>
+      </div>
+    </div>
     <div class="register-card glass-panel">
       <div class="register-header">
         <i class="fa-solid fa-trophy register-icon"></i>
-        <h2 id="register-competition-title">Tournament Entry</h2>
+        <h2 id="register-competition-title" data-i18n="tournament_entry">Tournament Entry</h2>
         <div id="register-timer-countdown" class="register-countdown-timer hidden">
-          Time remaining: <span id="register-time-left">--</span>
+          <span data-i18n="time_remaining">Time remaining</span>: <span id="register-time-left">--</span>
         </div>
-        <p id="register-competition-desc">Register to join the live tournament bracket.</p>
+        <p id="register-competition-desc" data-i18n="register_desc">Register to join the live tournament bracket.</p>
       </div>
       <div id="registration-form-container">
         <form id="participant-registration-form">
           <div class="form-group">
-            <label for="reg-name">Participant Name</label>
-            <input type="text" id="reg-name" placeholder="Enter your full name" required autocomplete="off">
+            <label for="reg-name" data-i18n="participant_name">Participant Name</label>
+            <input type="text" id="reg-name" data-i18n-placeholder="enter_full_name" placeholder="Enter your full name" required autocomplete="off">
           </div>
           <div class="form-group">
-            <label for="reg-company-id">Company ID</label>
-            <input type="text" id="reg-company-id" placeholder="Enter Company ID" required autocomplete="off">
+            <label for="reg-company-id" data-i18n="company_id">Company ID</label>
+            <input type="text" id="reg-company-id" data-i18n-placeholder="enter_company_id" placeholder="Enter Company ID" required autocomplete="off">
           </div>
           <button type="submit" class="btn-glow w-full" id="btn-submit-registration">
-            <i class="fa-solid fa-user-check"></i> Submit Registration
+            <i class="fa-solid fa-user-check"></i> <span data-i18n="submit_registration">Submit Registration</span>
           </button>
         </form>
       </div>
@@ -419,36 +444,41 @@
       </div>
       <div class="header-status">
         <span class="status-badge" id="live-tournament-status-badge">
-          <span class="status-dot"></span> Setup Phase
+          <span class="status-dot"></span> <span data-i18n="setup_phase">Setup Phase</span>
         </span>
       </div>
       <div class="header-actions">
+        <div class="lang-selector" style="margin-right: 0.5rem;">
+          <button type="button" class="btn-lang active" data-lang="en">EN</button>
+          <span class="lang-separator">|</span>
+          <button type="button" class="btn-lang" data-lang="zh">中</button>
+        </div>
         <!-- Live View Bracket toggles -->
         <div id="live-bracket-view-toggle-container" class="control-group hidden" style="margin-right: 0.5rem;">
-          <button id="btn-live-view-single" class="btn-view-toggle"><i class="fa-solid fa-square"></i> Single View</button>
-          <button id="btn-live-view-double" class="btn-view-toggle active"><i class="fa-solid fa-table-cells-large"></i> Double View</button>
+          <button id="btn-live-view-single" class="btn-view-toggle"><i class="fa-solid fa-square"></i> <span data-i18n="single_view">Single View</span></button>
+          <button id="btn-live-view-double" class="btn-view-toggle active"><i class="fa-solid fa-table-cells-large"></i> <span data-i18n="double_view">Double View</span></button>
         </div>
         <div id="live-bracket-sub-toggle-container" class="control-group hidden" style="margin-right: 0.5rem;">
-          <button id="btn-live-sub-winners" class="btn-view-toggle active">Winners</button>
-          <button id="btn-live-sub-losers" class="btn-view-toggle">Losers</button>
+          <button id="btn-live-sub-winners" class="btn-view-toggle active" data-i18n="winners">Winners</button>
+          <button id="btn-live-sub-losers" class="btn-view-toggle" data-i18n="losers">Losers</button>
         </div>
 
-        <button id="btn-live-zoom-in" class="btn-icon-control" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
-        <button id="btn-live-zoom-reset" class="btn-icon-control" title="Reset View"><i class="fa-solid fa-arrows-to-eye"></i></button>
-        <button id="btn-live-zoom-out" class="btn-icon-control" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
-        <span class="live-legend"><span class="legend-live-dot"></span> Live</span>
+        <button id="btn-live-zoom-in" class="btn-icon-control" data-i18n-title="zoom_in" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+        <button id="btn-live-zoom-reset" class="btn-icon-control" data-i18n-title="reset_view" title="Reset View"><i class="fa-solid fa-arrows-to-eye"></i></button>
+        <button id="btn-live-zoom-out" class="btn-icon-control" data-i18n-title="zoom_out" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+        <span class="live-legend"><span class="legend-live-dot"></span> <span data-i18n="live">Live</span></span>
       </div>
     </header>
 
     <div class="live-dashboard-container">
       <!-- Winners Bracket -->
-      <div class="bracket-section-label hidden" id="live-winners-label">Winners Bracket</div>
+      <div class="bracket-section-label hidden" id="live-winners-label" data-i18n="winners_bracket">Winners Bracket</div>
       <div class="bracket-canvas-container" id="live-bracket-canvas-container">
         <div class="bracket-canvas" id="live-bracket-canvas"></div>
       </div>
 
       <!-- Losers Bracket (double elim) -->
-      <div class="bracket-section-label losers-label hidden" id="live-losers-label">Losers Bracket</div>
+      <div class="bracket-section-label losers-label hidden" id="live-losers-label" data-i18n="losers_bracket">Losers Bracket</div>
       <div class="bracket-canvas-container hidden" id="live-losers-bracket-canvas-container" style="height:300px">
         <div class="bracket-canvas" id="live-losers-bracket-canvas"></div>
       </div>
