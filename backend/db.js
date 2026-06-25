@@ -4,7 +4,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const jsonDbPath = path.join(__dirname, '..', 'database', 'db.json');
+const jsonDbPath = process.env.VERCEL
+  ? path.join('/tmp', 'db.json')
+  : path.join(__dirname, '..', 'database', 'db.json');
 
 const { Pool } = pg;
 
