@@ -144,6 +144,11 @@
             </div>
           </div>
 
+          <div class="form-group" id="include-third-place-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; margin-bottom: 0.75rem;">
+            <input type="checkbox" id="include-third-place" style="width: auto; margin: 0; cursor: pointer;">
+            <label for="include-third-place" style="margin: 0; cursor: pointer; user-select: none; font-size: 0.9rem;">Include 3rd Place Match</label>
+          </div>
+
           <div class="form-group">
             <label for="registration-timer-select">QR Registration Time Limit</label>
             <div class="select-wrapper">
@@ -302,7 +307,13 @@
         <div class="tab-content" id="tab-participants-list">
           <div class="table-actions">
             <h3 class="tab-section-title">Participants Database</h3>
-            <div style="display:flex;gap:0.5rem">
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <input type="text" id="participants-tab-search" placeholder="Search name/company..." style="max-width: 200px; padding: 0.35rem 0.75rem; font-size: 0.85rem; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm);">
+              <select id="participants-tab-filter" style="max-width: 130px; padding: 0.35rem 0.75rem; font-size: 0.85rem; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm);">
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="bye">Bye</option>
+              </select>
               <button id="btn-add-table-row" class="btn-primary btn-sm"><i class="fa-solid fa-user-plus"></i> Add</button>
             </div>
           </div>
@@ -319,6 +330,10 @@
               </thead>
               <tbody id="participants-table-body"></tbody>
             </table>
+          </div>
+          <div class="pagination-container" id="participants-pagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding: 0.5rem 0;">
+            <div class="pagination-info" id="participants-pagination-info" style="font-size: 0.85rem; color: var(--text-secondary);">Showing 0 to 0 of 0 participants</div>
+            <div class="pagination-buttons" id="participants-pagination-buttons" style="display: flex; gap: 0.25rem;"></div>
           </div>
         </div>
 
@@ -477,20 +492,6 @@
               <select id="new-bracket-type">
                 <option value="single">Single Elimination</option>
                 <option value="double">Double Elimination</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="new-registration-time">QR Registration Time Limit</label>
-            <div class="select-wrapper">
-              <select id="new-registration-time">
-                <option value="30">30 seconds</option>
-                <option value="60" selected>1 minute</option>
-                <option value="120">2 minutes</option>
-                <option value="300">5 minutes</option>
-                <option value="600">10 minutes</option>
-                <option value="1800">30 minutes</option>
-                <option value="0">Unlimited</option>
               </select>
             </div>
           </div>

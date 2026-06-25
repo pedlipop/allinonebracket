@@ -18,6 +18,7 @@ let activeSelectedMatch = null; // { bracket: 'w'|'l'|'gf', roundIndex, matchInd
 let editTargetPlayerIndex = null;
 let bracketViewMode = 'double';     // 'single' or 'double'
 let bracketSingleActive = 'winners'; // 'winners' or 'losers'
+let participantsCurrentPage = 1;
 
 // Zoom / Pan state (shared across brackets within a view)
 let zoomScale = 0.75;
@@ -469,6 +470,13 @@ function renderHostView() {
     if (bsEl) bsEl.value = state.bracketSizeConfig || 'auto';
     const btEl = document.getElementById('bracket-type');
     if (btEl) btEl.value = state.bracketType || 'single';
+    const tpEl = document.getElementById('include-third-place');
+    if (tpEl) tpEl.checked = !!state.includeThirdPlace;
+
+    const includeThirdPlaceGroup = document.getElementById('include-third-place-group');
+    if (includeThirdPlaceGroup) {
+      includeThirdPlaceGroup.classList.toggle('hidden', state.bracketType !== 'single');
+    }
   }
 
   // Active tab
@@ -679,6 +687,19 @@ function buildSingleBracket(size, seeded) {
     rounds.push(round);
   }
 
+  // Include 3rd Place Match if single elimination and checked
+  if (state.includeThirdPlace && size >= 4) {
+    const finalRoundIdx = numRounds - 1;
+    rounds[finalRoundIdx].push({
+      id: `${finalRoundIdx}-3rd`,
+      players: [-1, -1],
+      scores: [0, 0],
+      winner: null,
+      status: 'pending',
+      isThirdPlace: true
+    });
+  }
+
   return { type: 'single', size, rounds };
 }
 
@@ -769,8 +790,17 @@ function propagateWinnersRound(rIdx) {
     const slot = mIdx % 2;
     if (match.status === 'completed' && match.winner !== null) {
       next[nextMatchIdx].players[slot] = match.winner;
+
+      // If semi-final round and 3rd place match exists, propagate loser to 3rd place match (next[1])
+      if (state.includeThirdPlace && rIdx === state.bracket.rounds.length - 2 && next[1]) {
+        const loser = match.players.find(p => p !== match.winner);
+        next[1].players[slot] = loser !== undefined ? loser : -1;
+      }
     } else {
       next[nextMatchIdx].players[slot] = -1;
+      if (state.includeThirdPlace && rIdx === state.bracket.rounds.length - 2 && next[1]) {
+        next[1].players[slot] = -1;
+      }
     }
   });
 
@@ -1088,7 +1118,7 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
       node.className = `match-node ${match.status}`;
       node.id = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
 
-      let hdrHtml = `Match ${mIdx + 1}`;
+      let hdrHtml = match.isThirdPlace ? '3rd Place Match' : `Match ${mIdx + 1}`;
       let hdrCls = '';
       if (match.status === 'in-progress') { hdrHtml = '<i class="fa-solid fa-gamepad"></i> Playing'; hdrCls = 'active-tag'; }
 
@@ -1594,22 +1624,95 @@ function renderParticipantsTable() {
   if (!tbody || !state) return;
   tbody.innerHTML = '';
 
-  if (!state.players.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-list-placeholder">No participants registered yet.</td></tr>';
+  const searchVal = document.getElementById('participants-tab-search')?.value.toLowerCase().trim() || '';
+  const filterVal = document.getElementById('participants-tab-filter')?.value || 'all';
+
+  // Map players to track their original indexes for actions
+  const filteredPlayers = state.players
+    .map((p, idx) => ({ ...p, originalIndex: idx }))
+    .filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(searchVal) || p.companyId.toLowerCase().includes(searchVal);
+      const matchesFilter = filterVal === 'all' || (p.status || 'active') === filterVal;
+      return matchesSearch && matchesFilter;
+    });
+
+  const itemsPerPage = 20;
+  const totalItems = filteredPlayers.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  
+  if (participantsCurrentPage > totalPages) {
+    participantsCurrentPage = totalPages;
+  }
+
+  const startIndex = (participantsCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const pagePlayers = filteredPlayers.slice(startIndex, startIndex + itemsPerPage);
+
+  // Render pagination info
+  const infoEl = document.getElementById('participants-pagination-info');
+  if (infoEl) {
+    infoEl.textContent = `Showing ${totalItems ? startIndex + 1 : 0} to ${endIndex} of ${totalItems} participants`;
+  }
+
+  // Render pagination buttons
+  const buttonsEl = document.getElementById('participants-pagination-buttons');
+  if (buttonsEl) {
+    buttonsEl.innerHTML = '';
+    if (totalPages > 1) {
+      // Prev button
+      const prevBtn = document.createElement('button');
+      prevBtn.className = 'btn-secondary btn-sm';
+      prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+      prevBtn.disabled = participantsCurrentPage === 1;
+      prevBtn.addEventListener('click', () => {
+        participantsCurrentPage--;
+        renderParticipantsTable();
+      });
+      buttonsEl.appendChild(prevBtn);
+
+      // Page numbers
+      for (let i = 1; i <= totalPages; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `btn-sm ${participantsCurrentPage === i ? 'btn-primary' : 'btn-secondary'}`;
+        pageBtn.textContent = i;
+        pageBtn.addEventListener('click', () => {
+          participantsCurrentPage = i;
+          renderParticipantsTable();
+        });
+        buttonsEl.appendChild(pageBtn);
+      }
+
+      // Next button
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'btn-secondary btn-sm';
+      nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+      nextBtn.disabled = participantsCurrentPage === totalPages;
+      nextBtn.addEventListener('click', () => {
+        participantsCurrentPage++;
+        renderParticipantsTable();
+      });
+      buttonsEl.appendChild(nextBtn);
+    }
+  }
+
+  if (!totalItems) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-list-placeholder">No matching participants found.</td></tr>';
     return;
   }
 
-  state.players.forEach((p, idx) => {
+  pagePlayers.forEach((item, idx) => {
     const tr = document.createElement('tr');
+    const p = item;
+    const realIdx = item.originalIndex;
     
     let seedingBtns = '';
     if (state.status === 'setup') {
-      tr.dataset.index = idx;
+      tr.dataset.index = realIdx;
       seedingBtns = `
         <div class="drag-handle" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></div>
         <div class="btn-seeding-container" style="display:flex;gap:0.25rem">
-          <button class="btn-icon-sm" onclick="movePlayerSeeding(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Move Up"><i class="fa-solid fa-chevron-up"></i></button>
-          <button class="btn-icon-sm" onclick="movePlayerSeeding(${idx}, 1)" ${idx === state.players.length - 1 ? 'disabled' : ''} title="Move Down"><i class="fa-solid fa-chevron-down"></i></button>
+          <button class="btn-icon-sm" onclick="movePlayerSeeding(${realIdx}, -1)" ${realIdx === 0 ? 'disabled' : ''} title="Move Up"><i class="fa-solid fa-chevron-up"></i></button>
+          <button class="btn-icon-sm" onclick="movePlayerSeeding(${realIdx}, 1)" ${realIdx === state.players.length - 1 ? 'disabled' : ''} title="Move Down"><i class="fa-solid fa-chevron-down"></i></button>
         </div>
       `;
     }
@@ -1617,15 +1720,15 @@ function renderParticipantsTable() {
     const pStatus = p.status || 'active';
 
     tr.innerHTML = `
-      <td>${idx + 1}</td>
-      <td><input type="text" class="table-input" value="${escapeHTML(p.name)}" onchange="updatePlayerFromTable(${idx},'name',this.value)"></td>
-      <td><input type="text" class="table-input" value="${escapeHTML(p.companyId)}" onchange="updatePlayerFromTable(${idx},'companyId',this.value)"></td>
+      <td>${realIdx + 1}</td>
+      <td><input type="text" class="table-input" value="${escapeHTML(p.name)}" onchange="updatePlayerFromTable(${realIdx},'name',this.value)"></td>
+      <td><input type="text" class="table-input" value="${escapeHTML(p.companyId)}" onchange="updatePlayerFromTable(${realIdx},'companyId',this.value)"></td>
       <td><span class="badge-status ${pStatus}">${pStatus.toUpperCase()}</span></td>
       <td>
         <div style="display:flex;gap:0.35rem;align-items:center">
           ${seedingBtns}
-          <button class="btn-icon-sm" onclick="openEditPlayerModal(${idx})" title="Edit"><i class="fa-solid fa-user-pen"></i></button>
-          <button class="btn-icon-sm" onclick="deletePlayer(${idx})" title="Delete" style="background:rgba(255,71,87,0.1);border-color:rgba(255,71,87,0.3);color:var(--danger)"><i class="fa-solid fa-trash"></i></button>
+          <button class="btn-icon-sm" onclick="openEditPlayerModal(${realIdx})" title="Edit"><i class="fa-solid fa-user-pen"></i></button>
+          <button class="btn-icon-sm" onclick="deletePlayer(${realIdx})" title="Delete" style="background:rgba(255,71,87,0.1);border-color:rgba(255,71,87,0.3);color:var(--danger)"><i class="fa-solid fa-trash"></i></button>
         </div>
       </td>
     `;
@@ -1985,6 +2088,23 @@ function setupEventListeners() {
   // Search players
   document.getElementById('player-search').addEventListener('input', renderSidebarPlayers);
 
+  // Participants tab table search and filter
+  const tabSearch = document.getElementById('participants-tab-search');
+  if (tabSearch) {
+    tabSearch.addEventListener('input', () => {
+      participantsCurrentPage = 1;
+      renderParticipantsTable();
+    });
+  }
+
+  const tabFilter = document.getElementById('participants-tab-filter');
+  if (tabFilter) {
+    tabFilter.addEventListener('change', () => {
+      participantsCurrentPage = 1;
+      renderParticipantsTable();
+    });
+  }
+
   // Keyboard shortcuts
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
@@ -2012,6 +2132,14 @@ function setupEventListeners() {
     if (!state) return;
     saveState();
     state.bracketType = e.target.value;
+    saveState(false);
+    renderHostView();
+  });
+
+  document.getElementById('include-third-place').addEventListener('change', (e) => {
+    if (!state) return;
+    saveState();
+    state.includeThirdPlace = e.target.checked;
     saveState(false);
     renderHostView();
   });
@@ -2267,7 +2395,7 @@ function setupEventListeners() {
     if (!name) return;
     const bracketSizeConfig = document.getElementById('new-bracket-size').value;
     const bracketType = document.getElementById('new-bracket-type').value;
-    const regDuration = parseInt(document.getElementById('new-registration-time').value || '60');
+    const regDuration = 60; // Default to 1 minute, configurable on setup panel
 
     const id = `t_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const tournament = {
