@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import db from './db.js';
+import QRCode from 'qrcode';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -213,6 +214,23 @@ app.get('/api/tournaments', async (req, res) => {
       playerCount: parseInt(t.player_count) || 0
     }));
     res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Generate QR Code image (Data URL)
+app.get('/api/qrcode', async (req, res) => {
+  const { text } = req.query;
+  if (!text) {
+    return res.status(400).json({ error: 'Text query parameter is required' });
+  }
+  try {
+    const dataUrl = await QRCode.toDataURL(text, {
+      width: 250,
+      margin: 1
+    });
+    res.json({ dataUrl });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -452,6 +470,10 @@ app.post('/api/tournament/:id/register', async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+if (!process.env.VERCEL) {
+  server.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
+
+export default app;

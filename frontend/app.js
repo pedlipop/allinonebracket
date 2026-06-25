@@ -1529,7 +1529,16 @@ function updatePlayerFromTable(index, field, value) {
  * 2. Import qrcode on the server (or bundle it for client) and replace this helper.
  */
 async function generateQRCode(text) {
-  // Temporary placeholder using free public API
+  try {
+    const res = await fetch(`/api/qrcode?text=${encodeURIComponent(text)}`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.dataUrl;
+    }
+  } catch (err) {
+    console.error('Failed to generate QR Code from server:', err);
+  }
+  // Fallback to public api if server endpoint fails
   return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(text)}`;
 }
 
