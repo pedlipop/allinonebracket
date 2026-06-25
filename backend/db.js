@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { createClient } from '@libsql/client';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,6 +12,7 @@ const jsonDbPath = process.env.VERCEL
 const { Pool } = pg;
 
 let pgPool = null;
+let tursoClient = null;
 let useJsonDb = false;
 
 // Create database directory if it doesn't exist
@@ -29,36 +31,64 @@ if (!fs.existsSync(jsonDbPath)) {
   }, null, 2));
 }
 
-// Try initializing PG Pool
-try {
-  const poolConfig = {
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/tournament_bracket',
-    connectionTimeoutMillis: 2000, // Fail fast if Postgres is down
-  };
-  // Enable SSL for cloud-hosted PostgreSQL (Neon, Supabase, etc.)
-  if (process.env.DATABASE_URL) {
-    poolConfig.ssl = { rejectUnauthorized: false };
-  }
-  pgPool = new Pool(poolConfig);
-  
-  // Test connection
-  await pgPool.query('SELECT NOW()');
-  console.log('Connected to PostgreSQL successfully.');
-
-  // Auto-initialize schema if schema.sql exists
+// Try initializing Turso or PG Pool
+if (process.env.TURSO_URL && process.env.TURSO_AUTH_TOKEN) {
   try {
-    const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
-    if (fs.existsSync(schemaPath)) {
-      const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-      await pgPool.query(schemaSql);
-      console.log('PostgreSQL schema initialized/verified successfully.');
+    tursoClient = createClient({
+      url: process.env.TURSO_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN
+    });
+    // Test connection
+    await tursoClient.execute({ sql: 'SELECT 1' });
+    console.log('Connected to Turso (SQLite) successfully.');
+
+    // Auto-initialize schema if schema.sql exists
+    try {
+      const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
+      if (fs.existsSync(schemaPath)) {
+        const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+        await tursoClient.executeMultiple(schemaSql);
+        console.log('Turso schema initialized/verified successfully.');
+      }
+    } catch (schemaErr) {
+      console.error('Failed to auto-initialize Turso schema:', schemaErr);
     }
-  } catch (schemaErr) {
-    console.error('Failed to auto-initialize PostgreSQL schema:', schemaErr);
+  } catch (err) {
+    console.warn('Turso connection failed. Falling back to local JSON database.', err);
+    useJsonDb = true;
   }
-} catch (err) {
-  console.warn('PostgreSQL connection failed. Falling back to local JSON database.');
-  useJsonDb = true;
+} else {
+  // Try initializing PG Pool
+  try {
+    const poolConfig = {
+      connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/tournament_bracket',
+      connectionTimeoutMillis: 2000, // Fail fast if Postgres is down
+    };
+    // Enable SSL for cloud-hosted PostgreSQL (Neon, Supabase, etc.)
+    if (process.env.DATABASE_URL) {
+      poolConfig.ssl = { rejectUnauthorized: false };
+    }
+    pgPool = new Pool(poolConfig);
+    
+    // Test connection
+    await pgPool.query('SELECT NOW()');
+    console.log('Connected to PostgreSQL successfully.');
+
+    // Auto-initialize schema if schema.sql exists
+    try {
+      const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
+      if (fs.existsSync(schemaPath)) {
+        const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+        await pgPool.query(schemaSql);
+        console.log('PostgreSQL schema initialized/verified successfully.');
+      }
+    } catch (schemaErr) {
+      console.error('Failed to auto-initialize PostgreSQL schema:', schemaErr);
+    }
+  } catch (err) {
+    console.warn('PostgreSQL connection failed. Falling back to local JSON database.');
+    useJsonDb = true;
+  }
 }
 
 // JSON Database Helper operations
@@ -286,6 +316,34 @@ export default {
     if (useJsonDb) {
       return executeJsonQuery(text, params);
     }
+    // If Turso is active, prioritize it
+    if (tursoClient) {
+      try {
+        // Map positional parameters $1, $2 to named object format {"$1": val1, "$2": val2} for SQLite
+        const args = {};
+        if (Array.isArray(params)) {
+          params.forEach((val, idx) => {
+            args[`$${idx + 1}`] = val;
+          });
+        } else if (params && typeof params === 'object') {
+          Object.assign(args, params);
+        }
+
+        // Replace NOW() with CURRENT_TIMESTAMP in SQLite queries
+        let sql = text;
+        if (sql.includes('NOW()')) {
+          sql = sql.replace(/NOW\(\)/g, 'CURRENT_TIMESTAMP');
+        }
+
+        const res = await tursoClient.execute({ sql, args });
+        return { rows: res.rows };
+      } catch (err) {
+        console.error('Turso (SQLite) query failed. Falling back to local JSON database.', err);
+        useJsonDb = true;
+        return executeJsonQuery(text, params);
+      }
+    }
+    // Otherwise fallback to PostgreSQL Pool
     try {
       return await pgPool.query(text, params);
     } catch (err) {
