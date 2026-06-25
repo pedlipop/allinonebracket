@@ -153,6 +153,7 @@ async function routeApp() {
   const params = new URLSearchParams(window.location.search);
 
   if (params.has('view') && params.get('view') === 'live') {
+    // PUBLIC: Live view — no admin needed
     const tid = params.get('tid') || appData.currentId;
     if (tid) {
       await fetchTournamentState(tid);
@@ -162,6 +163,7 @@ async function routeApp() {
     renderLiveView();
     setupZoomPan('live-bracket-canvas-container', 'live-bracket-canvas');
   } else if (params.has('register')) {
+    // PUBLIC: Registration view — no admin needed
     const tid = params.get('tid') || appData.currentId;
     if (tid) {
       await fetchTournamentState(tid);
@@ -169,20 +171,39 @@ async function routeApp() {
     }
     switchView('player-registration-view');
     initRegistrationView();
-  } else {
-    const tid = params.get('tournamentId');
-    if (tid) {
-      appData.currentId = tid;
-      await fetchTournamentState(tid);
-      connectWebSocket(tid);
-      switchView('host-view');
-      renderHostView();
-      setupZoomPan('bracket-canvas-container', 'bracket-canvas');
-    } else {
-      switchView('tournament-hub-view');
-      await loadAppData();
-      renderTournamentHub();
+  } else if (params.has('adminKey')) {
+    // ADMIN: Verify admin key with the server
+    const adminKey = params.get('adminKey');
+    try {
+      const res = await fetch(`/api/tournament-by-admin-key?adminKey=${encodeURIComponent(adminKey)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const tid = data.id;
+        appData.currentId = tid;
+        appData._adminKey = adminKey;
+        await fetchTournamentState(tid);
+        connectWebSocket(tid);
+        switchView('host-view');
+        renderHostView();
+        setupZoomPan('bracket-canvas-container', 'bracket-canvas');
+      } else {
+        // Invalid admin key — show hub
+        console.warn('Invalid admin key, redirecting to hub.');
+        window.location.search = '';
+      }
+    } catch (err) {
+      console.error('Failed to verify admin key:', err);
+      window.location.search = '';
     }
+  } else if (params.has('tournamentId')) {
+    // Someone visited with tournamentId but no adminKey — redirect to public live view
+    const tid = params.get('tournamentId');
+    window.location.search = `?view=live&tid=${encodeURIComponent(tid)}`;
+  } else {
+    // HUB: Show tournament list
+    switchView('tournament-hub-view');
+    await loadAppData();
+    renderTournamentHub();
   }
 }
 
@@ -283,7 +304,7 @@ function renderTournamentHub() {
         <span class="status-badge ${statusCls}"><span class="status-dot"></span>${statusStr}</span>
       </div>
       <div class="tc-actions">
-        <button class="btn-primary btn-sm" onclick="openTournament('${t.id}')"><i class="fa-solid fa-arrow-right"></i> Open</button>
+        <button class="btn-primary btn-sm" onclick="openTournament('${escapeHTML(t.adminKey || t.id)}')"><i class="fa-solid fa-arrow-right"></i> Open</button>
         <button class="btn-danger btn-sm" onclick="deleteTournamentCard('${t.id}')"><i class="fa-solid fa-trash"></i></button>
       </div>
     `;
@@ -291,8 +312,8 @@ function renderTournamentHub() {
   });
 }
 
-function openTournament(id) {
-  window.location.search = `?tournamentId=${id}`;
+function openTournament(adminKey) {
+  window.location.search = `?adminKey=${encodeURIComponent(adminKey)}`;
 }
 
 let deleteTournamentTargetId = null;
@@ -2059,18 +2080,25 @@ function setupEventListeners() {
       registrationTimer: { duration: regDuration, remaining: regDuration, isActive: false }
     };
 
+    let adminKey = null;
     try {
-      await fetch('/api/tournament', {
+      const res = await fetch('/api/tournament', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, name, status: 'setup' })
       });
+      if (res.ok) {
+        const data = await res.json();
+        adminKey = data.tournament.adminKey;
+      }
     } catch (err) {
       console.error('Failed to create tournament on server:', err);
     }
 
     appData.tournaments[id] = tournament;
+    if (adminKey) appData.tournaments[id].adminKey = adminKey;
     appData.currentId = id;
+    appData._adminKey = adminKey;
     state = tournament;
     
     await persistAppData();
@@ -2078,7 +2106,12 @@ function setupEventListeners() {
     document.getElementById('create-tournament-modal').classList.add('hidden');
     document.getElementById('create-tournament-form').reset();
 
-    window.location.search = `?tournamentId=${id}`;
+    // Navigate with adminKey (secret admin URL) instead of tournamentId
+    if (adminKey) {
+      window.location.search = `?adminKey=${encodeURIComponent(adminKey)}`;
+    } else {
+      window.location.search = `?tournamentId=${id}`;
+    }
   });
 
   setupDragAndDrop();

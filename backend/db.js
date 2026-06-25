@@ -31,10 +31,15 @@ if (!fs.existsSync(jsonDbPath)) {
 
 // Try initializing PG Pool
 try {
-  pgPool = new Pool({
+  const poolConfig = {
     connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/tournament_bracket',
     connectionTimeoutMillis: 2000, // Fail fast if Postgres is down
-  });
+  };
+  // Enable SSL for cloud-hosted PostgreSQL (Neon, Supabase, etc.)
+  if (process.env.DATABASE_URL) {
+    poolConfig.ssl = { rejectUnauthorized: false };
+  }
+  pgPool = new Pool(poolConfig);
   
   // Test connection
   await pgPool.query('SELECT NOW()');
@@ -81,6 +86,18 @@ const executeJsonQuery = (text, params) => {
   if (text.includes('SELECT * FROM tournaments WHERE id =')) {
     const tour = db.tournaments.find(t => t.id === p[0]);
     return { rows: tour ? [tour] : [] };
+  }
+
+  // 1.02 SELECT id, admin_key FROM tournaments WHERE admin_key = $1
+  if (text.includes('SELECT id, admin_key FROM tournaments WHERE admin_key =')) {
+    const tour = db.tournaments.find(t => t.admin_key === p[0]);
+    return { rows: tour ? [{ id: tour.id, admin_key: tour.admin_key }] : [] };
+  }
+
+  // 1.03 SELECT admin_key FROM tournaments WHERE id = $1
+  if (text.includes('SELECT admin_key FROM tournaments WHERE id =')) {
+    const tour = db.tournaments.find(t => t.id === p[0]);
+    return { rows: tour ? [{ admin_key: tour.admin_key }] : [] };
   }
 
   // 1.05 SELECT state_json FROM tournaments WHERE id = $1
@@ -166,6 +183,7 @@ const executeJsonQuery = (text, params) => {
     const id = p[0];
     const name = p[1];
     const status = p[2];
+    const admin_key = p[3] || null;
     const existingIdx = db.tournaments.findIndex(t => t.id === id);
     const nowStr = new Date().toISOString();
     
@@ -177,6 +195,7 @@ const executeJsonQuery = (text, params) => {
         id,
         name,
         status,
+        admin_key,
         state_json: JSON.stringify({ id, name, status, players: [], bracket: null }),
         created_at: nowStr,
         updated_at: nowStr

@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS tournaments (
     id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     status VARCHAR(20) DEFAULT 'Draft', -- Draft, Seeded, Started, Completed
+    state_json TEXT,
+    admin_key VARCHAR(64) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

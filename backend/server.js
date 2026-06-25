@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import db from './db.js';
 import QRCode from 'qrcode';
 
@@ -211,7 +212,8 @@ app.get('/api/tournaments', async (req, res) => {
       name: t.name || 'Tournament',
       status: t.status || 'Draft',
       createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
-      playerCount: parseInt(t.player_count) || 0
+      playerCount: parseInt(t.player_count) || 0,
+      adminKey: t.admin_key || null
     }));
     res.json(list);
   } catch (err) {
@@ -236,6 +238,41 @@ app.get('/api/qrcode', async (req, res) => {
   }
 });
 
+// Verify admin key for a tournament
+app.get('/api/tournament/:id/verify-admin', async (req, res) => {
+  const { id } = req.params;
+  const { adminKey } = req.query;
+  if (!adminKey) {
+    return res.json({ valid: false });
+  }
+  try {
+    const result = await db.query('SELECT admin_key FROM tournaments WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.json({ valid: false });
+    }
+    res.json({ valid: result.rows[0].admin_key === adminKey });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Lookup tournament by admin key (for routing)
+app.get('/api/tournament-by-admin-key', async (req, res) => {
+  const { adminKey } = req.query;
+  if (!adminKey) {
+    return res.status(400).json({ error: 'Missing adminKey' });
+  }
+  try {
+    const result = await db.query('SELECT id, admin_key FROM tournaments WHERE admin_key = $1', [adminKey]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Invalid admin key' });
+    }
+    res.json({ id: result.rows[0].id, adminKey: result.rows[0].admin_key });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Create a new tournament
 app.post('/api/tournament', async (req, res) => {
   const { id, name, status } = req.body;
@@ -243,11 +280,12 @@ app.post('/api/tournament', async (req, res) => {
     return res.status(400).json({ error: 'Missing tournament ID' });
   }
   try {
+    const adminKey = crypto.randomUUID().replace(/-/g, '') + crypto.randomBytes(8).toString('hex');
     await db.query(
-      'INSERT INTO tournaments (id, name, status) VALUES ($1, $2, $3)',
-      [id, name || 'New Tournament', status || 'Draft']
+      'INSERT INTO tournaments (id, name, status, admin_key) VALUES ($1, $2, $3, $4)',
+      [id, name || 'New Tournament', status || 'Draft', adminKey]
     );
-    res.json({ success: true, tournament: { id, name, status } });
+    res.json({ success: true, tournament: { id, name, status, adminKey } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
