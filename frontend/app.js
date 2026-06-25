@@ -149,11 +149,60 @@ async function fetchTournamentState(tid) {
   }
 }
 
+// Check if admin is logged in
+function isAdminLoggedIn() {
+  return !!sessionStorage.getItem('adminToken');
+}
+
+function showLoginView(redirectAfterLogin) {
+  switchView('login-view');
+
+  const form = document.getElementById('login-form');
+  const errorEl = document.getElementById('login-error');
+
+  // Remove old listener by cloning
+  const newForm = form.cloneNode(true);
+  form.parentNode.replaceChild(newForm, form);
+
+  newForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl = document.getElementById('login-error');
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        sessionStorage.setItem('adminToken', data.token);
+        errEl.classList.add('hidden');
+        // Continue routing after login
+        if (redirectAfterLogin) {
+          redirectAfterLogin();
+        } else {
+          routeApp();
+        }
+      } else {
+        errEl.textContent = data.error || 'Invalid credentials';
+        errEl.classList.remove('hidden');
+      }
+    } catch (err) {
+      errEl.textContent = 'Connection error. Please try again.';
+      errEl.classList.remove('hidden');
+    }
+  });
+}
+
 async function routeApp() {
   const params = new URLSearchParams(window.location.search);
 
   if (params.has('view') && params.get('view') === 'live') {
-    // PUBLIC: Live view — no admin needed
+    // PUBLIC: Live view — no login needed
     const tid = params.get('tid') || appData.currentId;
     if (tid) {
       await fetchTournamentState(tid);
@@ -163,7 +212,7 @@ async function routeApp() {
     renderLiveView();
     setupZoomPan('live-bracket-canvas-container', 'live-bracket-canvas');
   } else if (params.has('register')) {
-    // PUBLIC: Registration view — no admin needed
+    // PUBLIC: Registration view — no login needed
     const tid = params.get('tid') || appData.currentId;
     if (tid) {
       await fetchTournamentState(tid);
@@ -171,36 +220,26 @@ async function routeApp() {
     }
     switchView('player-registration-view');
     initRegistrationView();
-  } else if (params.has('adminKey')) {
-    // ADMIN: Verify admin key with the server
-    const adminKey = params.get('adminKey');
-    try {
-      const res = await fetch(`/api/tournament-by-admin-key?adminKey=${encodeURIComponent(adminKey)}`);
-      if (res.ok) {
-        const data = await res.json();
-        const tid = data.id;
-        appData.currentId = tid;
-        appData._adminKey = adminKey;
-        await fetchTournamentState(tid);
-        connectWebSocket(tid);
-        switchView('host-view');
-        renderHostView();
-        setupZoomPan('bracket-canvas-container', 'bracket-canvas');
-      } else {
-        // Invalid admin key — show hub
-        console.warn('Invalid admin key, redirecting to hub.');
-        window.location.search = '';
-      }
-    } catch (err) {
-      console.error('Failed to verify admin key:', err);
-      window.location.search = '';
-    }
+  } else if (!isAdminLoggedIn()) {
+    // NOT LOGGED IN — show login page for any admin route
+    showLoginView();
   } else if (params.has('tournamentId')) {
-    // Someone visited with tournamentId but no adminKey — redirect to public live view
+    // ADMIN (logged in): Open a tournament by ID
     const tid = params.get('tournamentId');
-    window.location.search = `?view=live&tid=${encodeURIComponent(tid)}`;
+    if (tid) {
+      appData.currentId = tid;
+      await fetchTournamentState(tid);
+      connectWebSocket(tid);
+      switchView('host-view');
+      renderHostView();
+      setupZoomPan('bracket-canvas-container', 'bracket-canvas');
+    } else {
+      switchView('tournament-hub-view');
+      await loadAppData();
+      renderTournamentHub();
+    }
   } else {
-    // HUB: Show tournament list
+    // ADMIN (logged in): Show tournament hub
     switchView('tournament-hub-view');
     await loadAppData();
     renderTournamentHub();
@@ -304,7 +343,7 @@ function renderTournamentHub() {
         <span class="status-badge ${statusCls}"><span class="status-dot"></span>${statusStr}</span>
       </div>
       <div class="tc-actions">
-        <button class="btn-primary btn-sm" onclick="openTournament('${escapeHTML(t.adminKey || t.id)}')"><i class="fa-solid fa-arrow-right"></i> Open</button>
+        <button class="btn-primary btn-sm" onclick="openTournament('${t.id}')"><i class="fa-solid fa-arrow-right"></i> Open</button>
         <button class="btn-danger btn-sm" onclick="deleteTournamentCard('${t.id}')"><i class="fa-solid fa-trash"></i></button>
       </div>
     `;
@@ -312,8 +351,8 @@ function renderTournamentHub() {
   });
 }
 
-function openTournament(adminKey) {
-  window.location.search = `?adminKey=${encodeURIComponent(adminKey)}`;
+function openTournament(id) {
+  window.location.search = `?tournamentId=${id}`;
 }
 
 let deleteTournamentTargetId = null;
@@ -2096,9 +2135,7 @@ function setupEventListeners() {
     }
 
     appData.tournaments[id] = tournament;
-    if (adminKey) appData.tournaments[id].adminKey = adminKey;
     appData.currentId = id;
-    appData._adminKey = adminKey;
     state = tournament;
     
     await persistAppData();
@@ -2106,12 +2143,7 @@ function setupEventListeners() {
     document.getElementById('create-tournament-modal').classList.add('hidden');
     document.getElementById('create-tournament-form').reset();
 
-    // Navigate with adminKey (secret admin URL) instead of tournamentId
-    if (adminKey) {
-      window.location.search = `?adminKey=${encodeURIComponent(adminKey)}`;
-    } else {
-      window.location.search = `?tournamentId=${id}`;
-    }
+    window.location.search = `?tournamentId=${id}`;
   });
 
   setupDragAndDrop();

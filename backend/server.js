@@ -25,6 +25,28 @@ app.use((req, res, next) => {
   next();
 });
 
+// Admin credentials (can be overridden via env vars)
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'pinxuan';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'pinxuan666';
+const validTokens = new Set();
+
+// Login endpoint
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomBytes(8).toString('hex');
+    validTokens.add(token);
+    return res.json({ success: true, token });
+  }
+  res.status(401).json({ error: 'Invalid username or password' });
+});
+
+// Verify session token
+app.get('/api/verify-session', (req, res) => {
+  const token = req.headers['x-admin-token'] || req.query.token;
+  res.json({ valid: validTokens.has(token) });
+});
+
 const server = createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
