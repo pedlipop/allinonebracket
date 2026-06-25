@@ -78,7 +78,128 @@ const TRANSLATIONS = {
     playing: "Playing",
     champion: "🏆 Champion",
     grand_final: "Grand Final",
-    resume: "Resume"
+    resume: "Resume",
+
+    // Added translations
+    tournament_setup: "Tournament Setup",
+    bracket_size: "Bracket Size",
+    auto_fit: "Auto (fit players)",
+    players_4: "4 Players",
+    players_8: "8 Players",
+    players_16: "16 Players",
+    players_32: "32 Players",
+    players_64: "64 Players",
+    players_128: "128 Players",
+    bracket_format: "Bracket Format",
+    single_elimination: "Single Elimination",
+    double_elimination: "Double Elimination",
+    include_3rd_place: "Include 3rd Place Match",
+    qr_timer_limit: "QR Registration Time Limit",
+    seconds_30: "30 seconds",
+    minute_1: "1 minute",
+    minutes_2: "2 minutes",
+    minutes_3: "3 minutes",
+    minutes_5: "5 minutes",
+    minutes_10: "10 minutes",
+    minutes_15: "15 minutes",
+    minutes_30: "30 minutes",
+    hour_1: "1 hour",
+    unlimited_manual: "Unlimited (manual close)",
+    open_qr_reg: "Open QR Registration",
+    generate_bracket: "Generate Bracket",
+    registration_open: "Registration Open",
+    close_entry: "Close Entry",
+    scan_to_register: "Scan to register name & company ID",
+    copy_url: "Copy URL",
+    participants: "Participants",
+    shuffle_players: "Shuffle Players",
+    add_player_manually: "Add Player Manually",
+    search_participant: "Search participant...",
+    no_participants_yet: "No participants registered yet.",
+    progress: "Progress",
+    matches: "Matches",
+    done: "Done",
+    round: "Round",
+    bracket: "Bracket",
+    share_export: "Share & Export",
+    click_match_manage: "Click match to manage &nbsp;|&nbsp; Drag to pan &nbsp;|&nbsp; Scroll to zoom",
+    bye_slots_active: "Bye slots active — Click to fill manually",
+    participants_database: "Participants Database",
+    search_name_company: "Search name/company...",
+    all_status: "All Status",
+    active: "Active",
+    bye: "Bye",
+    refresh: "Refresh",
+    import_csv: "Import CSV",
+    add: "Add",
+    hash_col: "#",
+    name_col: "Name",
+    company_id_col: "Company ID",
+    status_col: "Status",
+    actions_col: "Actions",
+    showing_info: "Showing {start} to {end} of {total} participants",
+    share_live_updates: "Share Live Updates",
+    player_live_url: "Player Live View URL",
+    share_live_desc: "Share this with players so they can watch the bracket live.",
+    copy: "Copy",
+    open_btn: "Open",
+    export: "Export",
+    export_csv: "Export CSV",
+    export_csv_desc: "Download participant list as CSV",
+    export_pdf: "Export PDF",
+    export_pdf_desc: "Print full-page bracket as PDF",
+    new_tournament: "New Tournament",
+    tournament_name: "Tournament Name",
+    tournament_name_placeholder: "e.g. Spring Championship 2026",
+    format: "Format",
+    create_tournament: "Create Tournament",
+    match_panel: "Match Panel",
+    vs: "VS",
+    mark_in_progress: "Mark as In-Progress",
+    declare_winner: "Declare Winner:",
+    reset_rematch: "Reset / Rematch",
+    edit_participant: "Edit Participant",
+    save_changes: "Save Changes",
+    confirm_reset_title: "Reset Tournament",
+    confirm_reset_desc: "This will permanently reset all match results and return the tournament to setup phase. Participants will be kept. This cannot be undone.",
+    cancel: "Cancel",
+    reset_all: "Reset All",
+    remove_participant: "Remove Participant",
+    confirm_delete_desc: "Are you sure you want to remove this participant?",
+    delete: "Delete",
+    delete_tournament: "Delete Tournament",
+    confirm_delete_tournament_desc: "Are you sure you want to delete this tournament? This cannot be undone.",
+    export_pdf_desc: "Print full-page bracket as PDF",
+    new_tournament: "New Tournament",
+    tournament_name: "Tournament Name",
+    tournament_name_placeholder: "e.g. Spring Championship 2026",
+    format: "Format",
+    create_tournament: "Create Tournament",
+    match_panel: "Match Panel",
+    vs: "VS",
+    mark_in_progress: "Mark as In-Progress",
+    declare_winner: "Declare Winner:",
+    reset_rematch: "Reset / Rematch",
+    edit_participant: "Edit Participant",
+    save_changes: "Save Changes",
+    confirm_reset_title: "Reset Tournament",
+    confirm_reset_desc: "This will permanently reset all match results and return the tournament to setup phase. Participants will be kept. This cannot be undone.",
+    cancel: "Cancel",
+    reset_all: "Reset All",
+    remove_participant: "Remove Participant",
+    confirm_delete_desc: "Are you sure you want to remove this participant?",
+    delete: "Delete",
+    delete_tournament: "Delete Tournament",
+    confirm_delete_tournament_desc: "Are you sure you want to delete this tournament? This cannot be undone.",
+    match_not_seeded: "This match has not been seeded yet.",
+    player_not_found_matches: "Player not found in active matches.",
+    replace_player_locked: "Replace Player (Bracket Locked)",
+    no_matching_participants: "No matching participants found.",
+    copied_to_clipboard: "Copied to clipboard!",
+    copy_failed: "Copy failed — please copy manually.",
+    reg_missing_id: "Registration is not available (Missing Tournament ID).",
+    reg_fill_fields: "Please fill in all fields.",
+    reg_success: "🎉 You have been successfully registered!"
   },
   zh: {
     admin_login: "管理员 <span>登录</span>",
@@ -149,7 +270,128 @@ const TRANSLATIONS = {
     playing: "比赛中",
     champion: "🏆 冠军",
     grand_final: "总决赛",
-    resume: "恢复"
+    resume: "恢复",
+
+    // Added translations
+    tournament_setup: "赛事设置",
+    bracket_size: "对阵规模",
+    auto_fit: "自动 (适配参赛者)",
+    players_4: "4 位参赛者",
+    players_8: "8 位参赛者",
+    players_16: "16 位参赛者",
+    players_32: "32 位参赛者",
+    players_64: "64 位参赛者",
+    players_128: "128 位参赛者",
+    bracket_format: "对阵格式",
+    single_elimination: "单败淘汰",
+    double_elimination: "双败淘汰",
+    include_3rd_place: "包含三四名决赛",
+    qr_timer_limit: "扫码登记限时",
+    seconds_30: "30 秒",
+    minute_1: "1 分钟",
+    minutes_2: "2 分钟",
+    minutes_3: "3 分钟",
+    minutes_5: "5 分钟",
+    minutes_10: "10 分钟",
+    minutes_15: "15 分钟",
+    minutes_30: "30 分钟",
+    hour_1: "1 小时",
+    unlimited_manual: "无限制 (手动关闭)",
+    open_qr_reg: "开放扫码登记",
+    generate_bracket: "生成对阵表",
+    registration_open: "登记已开放",
+    close_entry: "关闭通道",
+    scan_to_register: "扫码登记姓名与工号/公司ID",
+    copy_url: "复制链接",
+    participants: "参赛者",
+    shuffle_players: "打乱参赛者",
+    add_player_manually: "手动添加参赛者",
+    search_participant: "搜索参赛者...",
+    no_participants_yet: "暂无已登记参赛者。",
+    progress: "进度",
+    matches: "对局数",
+    done: "已完成",
+    round: "轮次",
+    bracket: "对阵表",
+    share_export: "分享与导出",
+    click_match_manage: "点击对局进行管理 &nbsp;|&nbsp; 拖拽平移 &nbsp;|&nbsp; 滚轮缩放",
+    bye_slots_active: "轮空位置已启用 — 点击手动填充",
+    participants_database: "参赛者数据库",
+    search_name_company: "搜索姓名/公司...",
+    all_status: "所有状态",
+    active: "活跃",
+    bye: "轮空",
+    refresh: "刷新",
+    import_csv: "导入 CSV",
+    add: "添加",
+    hash_col: "#",
+    name_col: "姓名",
+    company_id_col: "工号/公司ID",
+    status_col: "状态",
+    actions_col: "操作",
+    showing_info: "显示第 {start} 至 {end} 项，共 {total} 项",
+    share_live_updates: "分享实时动态",
+    player_live_url: "玩家实时视图链接",
+    share_live_desc: "将此链接分享给选手，即可实时查看对阵表。",
+    copy: "复制",
+    open_btn: "打开",
+    export: "导出",
+    export_csv: "导出 CSV",
+    export_csv_desc: "下载参赛者列表为 CSV 格式",
+    export_pdf: "导出 PDF",
+    export_pdf_desc: "打印完整对阵表为 PDF",
+    new_tournament: "新赛事",
+    tournament_name: "赛事名称",
+    tournament_name_placeholder: "例如：2026春季锦标赛",
+    format: "格式",
+    create_tournament: "创建赛事",
+    match_panel: "比赛面板",
+    vs: "VS",
+    mark_in_progress: "标记为进行中",
+    declare_winner: "宣布胜者：",
+    reset_rematch: "重置 / 重赛",
+    edit_participant: "编辑参赛者",
+    save_changes: "保存修改",
+    confirm_reset_title: "重置赛事",
+    confirm_reset_desc: "这将永久重置所有比赛结果，并将赛事退回准备阶段。参赛者将被保留。此操作无法撤销。",
+    cancel: "取消",
+    reset_all: "重置全部",
+    remove_participant: "移除参赛者",
+    confirm_delete_desc: "您确定要移除这位参赛者吗？",
+    delete: "删除",
+    delete_tournament: "删除赛事",
+    confirm_delete_tournament_desc: "您确定要删除此赛事吗？此操作无法撤销。",
+    export_pdf_desc: "打印完整对阵表为 PDF",
+    new_tournament: "新赛事",
+    tournament_name: "赛事名称",
+    tournament_name_placeholder: "例如：2026春季锦标赛",
+    format: "格式",
+    create_tournament: "创建赛事",
+    match_panel: "比赛面板",
+    vs: "VS",
+    mark_in_progress: "标记为进行中",
+    declare_winner: "宣布胜者：",
+    reset_rematch: "重置 / 重赛",
+    edit_participant: "编辑参赛者",
+    save_changes: "保存修改",
+    confirm_reset_title: "重置赛事",
+    confirm_reset_desc: "这将永久重置所有比赛结果，并将赛事退回准备阶段。参赛者将被保留。此操作无法撤销。",
+    cancel: "取消",
+    reset_all: "重置全部",
+    remove_participant: "移除参赛者",
+    confirm_delete_desc: "您确定要移除这位参赛者吗？",
+    delete: "删除",
+    delete_tournament: "删除赛事",
+    confirm_delete_tournament_desc: "您确定要删除此赛事吗？此操作无法撤销。",
+    match_not_seeded: "这场比赛尚未生成对阵。",
+    player_not_found_matches: "在活跃对局中未找到该参赛者。",
+    replace_player_locked: "替换参赛者 (对阵已锁定)",
+    no_matching_participants: "未找到匹配的参赛者。",
+    copied_to_clipboard: "已复制到剪贴板！",
+    copy_failed: "复制失败，请手动复制。",
+    reg_missing_id: "登记不可用 (缺少赛事 ID)。",
+    reg_fill_fields: "请填写所有字段。",
+    reg_success: "🎉 您已成功登记！"
   }
 };
 
@@ -1317,6 +1559,10 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
     return;
   }
 
+  // Calculate bracket size for grid rows
+  // The first round has rounds[0].length * 2 slots.
+  const bracketSize = rounds[0].length * 2;
+
   // SVG overlay for connector lines (placed first so nodes render on top)
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('class', 'connector-svg');
@@ -1327,16 +1573,19 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
   rounds.forEach((round, rIdx) => {
     const col = document.createElement('div');
     col.className = 'round-column';
+    col.style.gridTemplateRows = `repeat(${bracketSize}, 1fr)`;
 
     const header = document.createElement('div');
     header.className = 'round-title-header';
+    header.style.gridRow = `1 / span ${bracketSize}`;
+    header.style.alignSelf = 'start';
     const isFinal = rIdx === rounds.length - 1;
     if (prefix === 'w') {
       header.textContent = isFinal
-        ? (state.bracket.type === 'double' ? 'Winners Final' : 'Final')
-        : `Round ${rIdx + 1}`;
+        ? (state.bracket.type === 'double' ? getTranslation('winners_final') : getTranslation('final'))
+        : t('round_num', { num: rIdx + 1 });
     } else {
-      header.textContent = isFinal ? 'Losers Final' : `L-Round ${rIdx + 1}`;
+      header.textContent = isFinal ? getTranslation('losers_final') : t('l_round_num', { num: rIdx + 1 });
     }
     col.appendChild(header);
 
@@ -1348,9 +1597,27 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
       node.className = `match-node ${match.status}`;
       node.id = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
 
-      let hdrHtml = match.isThirdPlace ? '3rd Place Match' : `Match ${mIdx + 1}`;
+      // Apply grid-row positioning
+      let gridRowSpan, gridRowStart;
+      if (prefix === 'w') {
+        const factor = Math.pow(2, rIdx);
+        gridRowSpan = factor * 2;
+        gridRowStart = factor * (2 * mIdx + 1);
+      } else {
+        const factor = Math.pow(2, Math.floor(rIdx / 2) + 1);
+        gridRowSpan = factor;
+        gridRowStart = factor * mIdx + (factor / 2) + 1;
+        // Adjust for losers final round which has 1 match of span 2*factor or centered
+        if (isFinal) {
+          gridRowSpan = bracketSize;
+          gridRowStart = 1;
+        }
+      }
+      node.style.gridRow = `${gridRowStart} / span ${gridRowSpan}`;
+
+      let hdrHtml = match.isThirdPlace ? getTranslation('third_place_match') : t('match_num', { num: mIdx + 1 });
       let hdrCls = '';
-      if (match.status === 'in-progress') { hdrHtml = '<i class="fa-solid fa-gamepad"></i> Playing'; hdrCls = 'active-tag'; }
+      if (match.status === 'in-progress') { hdrHtml = `<i class="fa-solid fa-gamepad"></i> ${getTranslation('playing')}`; hdrCls = 'active-tag'; }
 
       const p1W = match.winner === match.players[0] && match.status === 'completed';
       const p2W = match.winner === match.players[1] && match.status === 'completed';
@@ -1358,22 +1625,61 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
       const clickStr = clickable ? `onclick="handleMatchClick('${prefix}','${canvasId}',${rIdx},${mIdx})"` : '';
 
       // Bye filler for setup (both brackets)
-      const showByeFill = !isLive && state.status === 'running';
+      const showByeFill = !isLive && state.status === 'running' && match.status !== 'completed';
       const p1IsBye = (match.players[0] === -2 || (match.players[0] >= (state.players?.length || 0) && match.players[0] >= 0));
       const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
 
+      // Calculate Seed Numbers for Winners Round 0 matches in setup mode
+      const size = bracketSize;
+      const seedingOrder = getSeedingOrder(size);
+      const seed1 = seedingOrder[mIdx * 2];
+      const seed2 = seedingOrder[mIdx * 2 + 1];
+
+      const isSeedLocked1 = (state.lockedSeeds || []).includes(seed1);
+      const isSeedLocked2 = (state.lockedSeeds || []).includes(seed2);
+
+      const canDrag = !isLive && state.status === 'setup' && prefix === 'w' && rIdx === 0;
+
+      let p1RowPrefix = '';
+      let p2RowPrefix = '';
+      let p1RowSuffix = '';
+      let p2RowSuffix = '';
+
+      if (!isLive && prefix === 'w' && rIdx === 0) {
+        // Show Seed Badge and Lock/Unlock Icon
+        const lockIcon1 = isSeedLocked1 ? 'fa-lock' : 'fa-lock-open';
+        const lockIcon2 = isSeedLocked2 ? 'fa-lock' : 'fa-lock-open';
+        const lockClass1 = isSeedLocked1 ? 'locked' : '';
+        const lockClass2 = isSeedLocked2 ? 'locked' : '';
+
+        p1RowPrefix = `<span class="seed-badge">Seed #${seed1}</span>`;
+        p2RowPrefix = `<span class="seed-badge">Seed #${seed2}</span>`;
+
+        if (state.status === 'setup') {
+          p1RowSuffix = `<button class="btn-lock-seed ${lockClass1}" onclick="event.stopPropagation(); toggleSeedLock(${seed1})"><i class="fa-solid ${lockIcon1}"></i></button>`;
+          p2RowSuffix = `<button class="btn-lock-seed ${lockClass2}" onclick="event.stopPropagation(); toggleSeedLock(${seed2})"><i class="fa-solid ${lockIcon2}"></i></button>`;
+        }
+      }
+
       const p1Row = showByeFill && p1IsBye
-        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
-        : `<span class="team-name" title="${escapeHTML(p1.name)}">${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>`;
+        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> ${getTranslation('fill_slot')}</button>`
+        : `<span class="team-name" title="${escapeHTML(p1.name)}">${p1RowPrefix}${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>${p1RowSuffix}`;
 
       const p2Row = showByeFill && p2IsBye
-        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
-        : `<span class="team-name" title="${escapeHTML(p2.name)}">${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>`;
+        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> ${getTranslation('fill_slot')}</button>`
+        : `<span class="team-name" title="${escapeHTML(p2.name)}">${p2RowPrefix}${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>${p2RowSuffix}`;
+
+      const drAttr1 = canDrag ? `draggable="true" data-seed="${seed1}"` : '';
+      const drAttr2 = canDrag ? `draggable="true" data-seed="${seed2}"` : '';
+      const dragClass1 = canDrag ? 'draggable' : '';
+      const dragClass2 = canDrag ? 'draggable' : '';
+      const lockedSeedClass1 = isSeedLocked1 ? 'locked-seed' : '';
+      const lockedSeedClass2 = isSeedLocked2 ? 'locked-seed' : '';
 
       node.innerHTML = `
         <div class="match-node-header ${hdrCls}">${hdrHtml}</div>
-        <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls}" ${clickStr}>${p1Row}</div>
-        <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls}" ${clickStr}>${p2Row}</div>
+        <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls} ${dragClass1} ${lockedSeedClass1}" ${drAttr1} ${clickStr}>${p1Row}</div>
+        <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls} ${dragClass2} ${lockedSeedClass2}" ${drAttr2} ${clickStr}>${p2Row}</div>
       `;
       col.appendChild(node);
     });
@@ -1586,7 +1892,7 @@ function handleMatchClick(prefix, canvasId, rIdx, mIdx) {
 
   if (!match) return;
   if (match.players[0] === -1 || match.players[1] === -1) {
-    showToast('This match has not been seeded yet.', 'info'); return;
+    showToast(getTranslation('match_not_seeded'), 'info'); return;
   }
 
   activeSelectedMatch = { prefix, canvasId, rIdx, mIdx };
@@ -1825,7 +2131,7 @@ function trackPlayerInBracket(playerIndex) {
   }
 
   if (!matchesToHighlight.length) {
-    showToast('Player not found in active matches.', 'info');
+    showToast(getTranslation('player_not_found_matches'), 'info');
     return;
   }
 
@@ -1880,7 +2186,7 @@ function openEditPlayerModal(index) {
   editTargetIndex = index;
   const p = state.players[index];
   const title = document.getElementById('participant-modal-title');
-  if (title) title.textContent = (state.status === 'running' || state.status === 'paused') ? 'Replace Player (Bracket Locked)' : 'Edit Participant';
+  if (title) title.textContent = (state.status === 'running' || state.status === 'paused') ? getTranslation('replace_player_locked') : getTranslation('edit_participant');
   document.getElementById('edit-player-name').value = p.name;
   document.getElementById('edit-player-id').value = p.companyId;
   document.getElementById('participant-edit-modal').classList.remove('hidden');
@@ -1921,7 +2227,7 @@ function renderParticipantsTable() {
   // Render pagination info
   const infoEl = document.getElementById('participants-pagination-info');
   if (infoEl) {
-    infoEl.textContent = `Showing ${totalItems ? startIndex + 1 : 0} to ${endIndex} of ${totalItems} participants`;
+    infoEl.textContent = t('showing_info', { start: totalItems ? startIndex + 1 : 0, end: endIndex, total: totalItems });
   }
 
   // Render pagination buttons
@@ -1966,7 +2272,7 @@ function renderParticipantsTable() {
   }
 
   if (!totalItems) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-list-placeholder">No matching participants found.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-list-placeholder">${getTranslation('no_matching_participants')}</td></tr>`;
     return;
   }
 
@@ -2135,8 +2441,8 @@ function renderShareExportTab() {
 }
 
 function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!', 'success'))
-    .catch(() => showToast('Copy failed — please copy manually.', 'error'));
+  navigator.clipboard.writeText(text).then(() => showToast(getTranslation('copied_to_clipboard'), 'success'))
+    .catch(() => showToast(getTranslation('copy_failed'), 'error'));
 }
 
 // ==========================================================================
@@ -2150,11 +2456,11 @@ function initRegistrationView() {
     e.preventDefault();
     
     const tid = new URLSearchParams(window.location.search).get('tid');
-    if (!tid) { showRegMsg('Registration is not available (Missing Tournament ID).', 'error'); return; }
+    if (!tid) { showRegMsg(getTranslation('reg_missing_id'), 'error'); return; }
 
     const name = document.getElementById('reg-name').value.trim();
     const companyId = document.getElementById('reg-company-id').value.trim();
-    if (!name || !companyId) { showRegMsg('Please fill in all fields.', 'error'); return; }
+    if (!name || !companyId) { showRegMsg(getTranslation('reg_fill_fields'), 'error'); return; }
 
     try {
       const res = await fetch(`/api/tournament/${tid}/register`, {
@@ -2167,7 +2473,7 @@ function initRegistrationView() {
         throw new Error(data.error || 'Registration failed');
       }
 
-      showRegMsg('🎉 You have been successfully registered!', 'success');
+      showRegMsg(getTranslation('reg_success'), 'success');
       form.reset();
     } catch (err) {
       showRegMsg(`⚠️ ${err.message}`, 'error');
@@ -2989,6 +3295,109 @@ function setupDragAndDrop() {
       tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('drag-over', 'dragging'));
     });
   }
+
+  // Bracket View Drag & Drop Seeding swaps
+  const bracketContainers = [
+    document.getElementById('bracket-canvas-container'),
+    document.getElementById('losers-bracket-canvas-container')
+  ];
+
+  bracketContainers.forEach(container => {
+    if (!container) return;
+
+    container.addEventListener('dragstart', (e) => {
+      const row = e.target.closest('.team-row.draggable');
+      if (!row || state.status !== 'setup') return;
+      const seed = parseInt(row.dataset.seed);
+      if ((state.lockedSeeds || []).includes(seed)) {
+        e.preventDefault();
+        showToast('This seed slot is locked.', 'warning');
+        return;
+      }
+      e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'bracket', seed }));
+      row.classList.add('dragging');
+    });
+
+    container.addEventListener('dragover', (e) => {
+      const row = e.target.closest('.team-row.draggable');
+      if (!row || state.status !== 'setup') return;
+      e.preventDefault();
+      const seed = parseInt(row.dataset.seed);
+      if ((state.lockedSeeds || []).includes(seed)) return;
+      row.classList.add('drag-over');
+    });
+
+    container.addEventListener('dragleave', (e) => {
+      const row = e.target.closest('.team-row.draggable');
+      if (row) row.classList.remove('drag-over');
+    });
+
+    container.addEventListener('drop', (e) => {
+      const row = e.target.closest('.team-row.draggable');
+      if (!row || state.status !== 'setup') return;
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      
+      const targetSeed = parseInt(row.dataset.seed);
+      if ((state.lockedSeeds || []).includes(targetSeed)) {
+        showToast('Target seed slot is locked.', 'warning');
+        return;
+      }
+
+      try {
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        if (data && data.type === 'bracket') {
+          const sourceSeed = data.seed;
+          if (sourceSeed !== targetSeed) {
+            swapPlayerSeeds(sourceSeed, targetSeed);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    container.addEventListener('dragend', (e) => {
+      container.querySelectorAll('.team-row.draggable').forEach(r => r.classList.remove('dragging', 'drag-over'));
+    });
+  });
+}
+
+function toggleSeedLock(seedNum) {
+  if (!state) return;
+  state.lockedSeeds = state.lockedSeeds || [];
+  const idx = state.lockedSeeds.indexOf(seedNum);
+  if (idx > -1) {
+    state.lockedSeeds.splice(idx, 1);
+    showToast(t('seed_unlocked_toast', { num: seedNum }) || `Seed #${seedNum} unlocked.`, 'info');
+  } else {
+    state.lockedSeeds.push(seedNum);
+    showToast(t('seed_locked_toast', { num: seedNum }) || `Seed #${seedNum} locked.`, 'info');
+  }
+  saveState(false);
+  renderHostView();
+}
+
+function swapPlayerSeeds(srcSeed, tgtSeed) {
+  if (!state || state.status !== 'setup') return;
+  saveState();
+
+  const size = state.bracketSize || computeActualBracketSize();
+  const seedingOrder = getSeedingOrder(size);
+  
+  // Find array index in state.players using seeding order
+  const srcPlayerIdx = seedingOrder.indexOf(srcSeed);
+  const tgtPlayerIdx = seedingOrder.indexOf(tgtSeed);
+
+  if (srcPlayerIdx > -1 && tgtPlayerIdx > -1) {
+    const temp = state.players[srcPlayerIdx];
+    state.players[srcPlayerIdx] = state.players[tgtPlayerIdx];
+    state.players[tgtPlayerIdx] = temp;
+    
+    saveState(false);
+    generateBracket();
+    showToast(`Swapped Seed #${srcSeed} and Seed #${tgtSeed}`, 'success');
+  }
 }
 
 // ==========================================================================
@@ -3067,12 +3476,17 @@ function renderUnifiedDoubleBracket(canvasId, isLive) {
 function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
   if (!rounds || !rounds.length) return;
 
+  const bracketSize = rounds[0].length * 2;
+
   rounds.forEach((round, rIdx) => {
     const col = document.createElement('div');
     col.className = 'round-column';
+    col.style.gridTemplateRows = `repeat(${bracketSize}, 1fr)`;
 
     const header = document.createElement('div');
     header.className = 'round-title-header';
+    header.style.gridRow = `1 / span ${bracketSize}`;
+    header.style.alignSelf = 'start';
     const isFinal = rIdx === rounds.length - 1;
     if (prefix === 'w') {
       header.textContent = isFinal
@@ -3091,6 +3505,24 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
       node.className = `match-node ${match.status}`;
       node.id = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
 
+      // Apply grid-row positioning
+      let gridRowSpan, gridRowStart;
+      if (prefix === 'w') {
+        const factor = Math.pow(2, rIdx);
+        gridRowSpan = factor * 2;
+        gridRowStart = factor * (2 * mIdx + 1);
+      } else {
+        const factor = Math.pow(2, Math.floor(rIdx / 2) + 1);
+        gridRowSpan = factor;
+        gridRowStart = factor * mIdx + (factor / 2) + 1;
+        // Adjust for losers final round which has 1 match of span 2*factor or centered
+        if (isFinal) {
+          gridRowSpan = bracketSize;
+          gridRowStart = 1;
+        }
+      }
+      node.style.gridRow = `${gridRowStart} / span ${gridRowSpan}`;
+
       let hdrHtml = match.isThirdPlace ? getTranslation('third_place_match') : t('match_num', {num: mIdx + 1});
       let hdrCls = '';
       if (match.status === 'in-progress') { hdrHtml = `<i class="fa-solid fa-gamepad"></i> ${getTranslation('playing')}`; hdrCls = 'active-tag'; }
@@ -3100,22 +3532,61 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
       const clickable = !isLive && state.status === 'running';
       const clickStr = clickable ? `onclick="handleMatchClick('${prefix}','${canvasId}',${rIdx},${mIdx})"` : '';
 
-      const showByeFill = !isLive && state.status === 'running';
+      const showByeFill = !isLive && state.status === 'running' && match.status !== 'completed';
       const p1IsBye = (match.players[0] === -2 || (match.players[0] >= (state.players?.length || 0) && match.players[0] >= 0));
       const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
 
+      // Calculate Seed Numbers for Winners Round 0 matches in setup mode
+      const size = bracketSize;
+      const seedingOrder = getSeedingOrder(size);
+      const seed1 = seedingOrder[mIdx * 2];
+      const seed2 = seedingOrder[mIdx * 2 + 1];
+
+      const isSeedLocked1 = (state.lockedSeeds || []).includes(seed1);
+      const isSeedLocked2 = (state.lockedSeeds || []).includes(seed2);
+
+      const canDrag = !isLive && state.status === 'setup' && prefix === 'w' && rIdx === 0;
+
+      let p1RowPrefix = '';
+      let p2RowPrefix = '';
+      let p1RowSuffix = '';
+      let p2RowSuffix = '';
+
+      if (!isLive && prefix === 'w' && rIdx === 0) {
+        // Show Seed Badge and Lock/Unlock Icon
+        const lockIcon1 = isSeedLocked1 ? 'fa-lock' : 'fa-lock-open';
+        const lockIcon2 = isSeedLocked2 ? 'fa-lock' : 'fa-lock-open';
+        const lockClass1 = isSeedLocked1 ? 'locked' : '';
+        const lockClass2 = isSeedLocked2 ? 'locked' : '';
+
+        p1RowPrefix = `<span class="seed-badge">Seed #${seed1}</span>`;
+        p2RowPrefix = `<span class="seed-badge">Seed #${seed2}</span>`;
+
+        if (state.status === 'setup') {
+          p1RowSuffix = `<button class="btn-lock-seed ${lockClass1}" onclick="event.stopPropagation(); toggleSeedLock(${seed1})"><i class="fa-solid ${lockIcon1}"></i></button>`;
+          p2RowSuffix = `<button class="btn-lock-seed ${lockClass2}" onclick="event.stopPropagation(); toggleSeedLock(${seed2})"><i class="fa-solid ${lockIcon2}"></i></button>`;
+        }
+      }
+
       const p1Row = showByeFill && p1IsBye
         ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> ${getTranslation('fill_slot')}</button>`
-        : `<span class="team-name" title="${escapeHTML(p1.name)}">${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>`;
+        : `<span class="team-name" title="${escapeHTML(p1.name)}">${p1RowPrefix}${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>${p1RowSuffix}`;
 
       const p2Row = showByeFill && p2IsBye
         ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> ${getTranslation('fill_slot')}</button>`
-        : `<span class="team-name" title="${escapeHTML(p2.name)}">${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>`;
+        : `<span class="team-name" title="${escapeHTML(p2.name)}">${p2RowPrefix}${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>${p2RowSuffix}`;
+
+      const drAttr1 = canDrag ? `draggable="true" data-seed="${seed1}"` : '';
+      const drAttr2 = canDrag ? `draggable="true" data-seed="${seed2}"` : '';
+      const dragClass1 = canDrag ? 'draggable' : '';
+      const dragClass2 = canDrag ? 'draggable' : '';
+      const lockedSeedClass1 = isSeedLocked1 ? 'locked-seed' : '';
+      const lockedSeedClass2 = isSeedLocked2 ? 'locked-seed' : '';
 
       node.innerHTML = `
         <div class="match-node-header ${hdrCls}">${hdrHtml}</div>
-        <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls}" ${clickStr}>${p1Row}</div>
-        <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls}" ${clickStr}>${p2Row}</div>
+        <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls} ${dragClass1} ${lockedSeedClass1}" ${drAttr1} ${clickStr}>${p1Row}</div>
+        <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls} ${dragClass2} ${lockedSeedClass2}" ${drAttr2} ${clickStr}>${p2Row}</div>
       `;
       col.appendChild(node);
     });

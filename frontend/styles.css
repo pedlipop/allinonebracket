@@ -779,11 +779,65 @@ select {
 
 /* Bracket Round & Match Styling */
 .round-column {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
+  display: grid;
   height: 100%;
   min-width: 250px;
+  align-items: center;
+}
+
+/* Seeding and lock button styling */
+.seed-badge {
+  background: rgba(0, 210, 255, 0.15);
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  color: var(--accent-cyan);
+  font-size: 0.68rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 800;
+  margin-right: 0.4rem;
+  display: inline-block;
+  letter-spacing: 0.5px;
+}
+.btn-lock-seed {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2rem;
+  font-size: 0.8rem;
+  margin-left: auto;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-lock-seed:hover {
+  color: var(--warning);
+  transform: scale(1.1);
+}
+.btn-lock-seed.locked {
+  color: var(--warning);
+}
+.team-row.locked-seed {
+  border: 1px solid rgba(255, 165, 2, 0.25);
+  background: rgba(255, 165, 2, 0.05);
+}
+.team-row.locked-seed:hover {
+  background: rgba(255, 165, 2, 0.08);
+}
+.team-row.draggable {
+  cursor: grab !important;
+}
+.team-row.draggable:active {
+  cursor: grabbing !important;
+}
+.team-row.dragging {
+  opacity: 0.4;
+  border: 1px dashed var(--accent-cyan) !important;
+}
+.team-row.drag-over {
+  background: rgba(0, 210, 255, 0.15) !important;
+  border: 1px dashed var(--accent-cyan) !important;
 }
 .round-title-header {
   font-size: 0.85rem;
