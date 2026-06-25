@@ -269,13 +269,15 @@ async function routeApp() {
 // ==========================================================================
 // STATE MANAGEMENT & UNDO/REDO
 // ==========================================================================
-function saveState(pushToUndo = true) {
+function saveState(pushToUndo = true, persist = true) {
   if (pushToUndo && state) {
     undoStack.push(JSON.stringify(state));
     redoStack = [];
     updateUndoRedoButtons();
   }
-  persistAppData();
+  if (persist) {
+    persistAppData();
+  }
 }
 
 function undo() {
@@ -422,7 +424,7 @@ function renderHostView() {
     if (compNameEl) compNameEl.textContent = state.name;
 
     const qrImg = document.getElementById('qr-image');
-    if (qrImg && !qrImg.src) {
+    if (qrImg && (!qrImg.getAttribute('src') || qrImg.getAttribute('src') === '')) {
       generateQRCode(regUrl).then(url => {
         qrImg.src = url;
       });
@@ -452,6 +454,10 @@ function renderHostView() {
   // Start: allow with >= 2 players
   const canStart = (state.status === 'setup' || state.status === 'registration') && (state.players || []).length >= 2;
   document.getElementById('btn-start').classList.toggle('hidden', !canStart);
+
+  const showGenBtn = state.status === 'setup' && (state.players || []).length >= 2;
+  const genBtn = document.getElementById('btn-generate-bracket');
+  if (genBtn) genBtn.classList.toggle('hidden', !showGenBtn);
 
   if (isActive) {
     const btnPause = document.getElementById('btn-pause');
@@ -631,6 +637,20 @@ function hasEmptyByeSlots() {
   return state.players.some(p => p.status === 'bye');
 }
 
+function getSeedingOrder(size) {
+  let order = [1];
+  while (order.length < size) {
+    const nextOrder = [];
+    const target = order.length * 2 + 1;
+    for (const s of order) {
+      nextOrder.push(s);
+      nextOrder.push(target - s);
+    }
+    order = nextOrder;
+  }
+  return order;
+}
+
 // ==========================================================================
 // BRACKET GENERATION
 // ==========================================================================
@@ -641,10 +661,14 @@ function generateBracket() {
   state.bracketSize = size;
 
   // Pad with BYEs up to bracket size
-  const seeded = [...state.players];
-  while (seeded.length < size) {
-    seeded.push({ name: 'BYE', companyId: 'BYE', status: 'bye' });
+  const playersList = [...state.players];
+  while (playersList.length < size) {
+    playersList.push({ name: 'BYE', companyId: 'BYE', status: 'bye' });
   }
+
+  // Seeding distribution: Map players list to standard seeding order positions
+  const seedingOrder = getSeedingOrder(size);
+  const seeded = seedingOrder.map(seedNum => playersList[seedNum - 1]);
 
   if (state.bracketType === 'double' && size >= 4) {
     state.bracket = buildDoubleBracket(size, seeded);
@@ -654,7 +678,6 @@ function generateBracket() {
     propagateSingleAll();
   }
 
-  state.status = 'running';
   saveState(false);
   renderHostView();
 }
@@ -1307,6 +1330,8 @@ function handleMatchClick(prefix, canvasId, rIdx, mIdx) {
   let match;
   if (prefix === 'gf') {
     match = state.bracket.grandFinal;
+  } else if (prefix === 'gfr') {
+    match = state.bracket.grandFinalReset;
   } else if (prefix === 'w') {
     match = state.bracket.type === 'double'
       ? state.bracket.winnersRounds?.[rIdx]?.[mIdx]
@@ -1348,6 +1373,7 @@ function getActiveMatch() {
   if (!activeSelectedMatch || !state?.bracket) return null;
   const { prefix, rIdx, mIdx } = activeSelectedMatch;
   if (prefix === 'gf') return state.bracket.grandFinal;
+  if (prefix === 'gfr') return state.bracket.grandFinalReset;
   if (prefix === 'w') return state.bracket.type === 'double'
     ? state.bracket.winnersRounds?.[rIdx]?.[mIdx]
     : state.bracket.rounds?.[rIdx]?.[mIdx];
@@ -1769,7 +1795,7 @@ async function generateQRCode(text) {
 // QR REGISTRATION ENGINE
 // ==========================================================================
 function openQRRegistration() {
-  saveState();
+  saveState(true, false);
   state.status = 'registration';
 
   // FIXED ID: 'registration-timer-select' (was 'registration-timer' — broken)
@@ -2065,12 +2091,20 @@ function setupEventListeners() {
   });
 
   // Start Tournament / Generate Bracket
-  const handleStartOrGenerate = () => {
+  document.getElementById('btn-generate-bracket')?.addEventListener('click', () => {
     if (!state || state.players.length < 2) { showToast('Need at least 2 players to start!', 'error'); return; }
     generateBracket();
-  };
-  document.getElementById('btn-start').addEventListener('click', handleStartOrGenerate);
-  document.getElementById('btn-generate-bracket')?.addEventListener('click', handleStartOrGenerate);
+  });
+  document.getElementById('btn-start').addEventListener('click', () => {
+    if (!state || state.players.length < 2) { showToast('Need at least 2 players to start!', 'error'); return; }
+    saveState();
+    if (!state.bracket) {
+      generateBracket();
+    }
+    state.status = 'running';
+    saveState(false);
+    renderHostView();
+  });
 
   // Pause / Resume
   document.getElementById('btn-pause').addEventListener('click', () => {
@@ -2166,6 +2200,32 @@ function setupEventListeners() {
     }
     saveState(false);
     renderHostView();
+  });
+
+  // Refresh participants list
+  document.getElementById('btn-refresh-participants').addEventListener('click', async () => {
+    if (!state) return;
+    try {
+      const btn = document.getElementById('btn-refresh-participants');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Refreshing...';
+      
+      await fetchTournamentState(state.id);
+      
+      renderParticipantsTable();
+      renderSidebarPlayers();
+      
+      showToast('Participants list refreshed.', 'success');
+    } catch (err) {
+      console.error('Failed to refresh participants:', err);
+      showToast('Could not refresh participants.', 'error');
+    } finally {
+      const btn = document.getElementById('btn-refresh-participants');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh';
+      }
+    }
   });
 
   // Add table row
@@ -2367,6 +2427,70 @@ function setupEventListeners() {
     });
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
   });
+
+  // Import CSV
+  const btnImportCsv = document.getElementById('btn-import-csv');
+  const csvFileInput = document.getElementById('csv-file-input');
+  if (btnImportCsv && csvFileInput) {
+    btnImportCsv.addEventListener('click', () => {
+      csvFileInput.click();
+    });
+    csvFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const text = evt.target.result;
+        const lines = text.split(/\r?\n/);
+        const parsed = [];
+        
+        for (let line of lines) {
+          line = line.trim();
+          if (!line) continue;
+          const parts = line.split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
+          // Ignore header row if first item is '#', 'name', 'id', 'status', etc.
+          if (parts[0] === '#' || parts[0].toLowerCase().includes('name') || parts[0].toLowerCase().includes('id')) {
+            continue;
+          }
+          if (parts.length >= 3) {
+            // format: #, Name, Company ID, Status or Name, Company ID, Status
+            const name = parts[1];
+            const companyId = parts[2];
+            parsed.push({ name, companyId });
+          } else if (parts.length === 2) {
+            // format: Name, Company ID
+            parsed.push({ name: parts[0], companyId: parts[1] });
+          } else if (parts.length === 1 && parts[0]) {
+            parsed.push({ name: parts[0], companyId: `ID-${Math.floor(Math.random() * 10000)}` });
+          }
+        }
+        
+        if (parsed.length === 0) {
+          showToast('No valid participants found in CSV.', 'error');
+          return;
+        }
+        
+        saveState();
+        let importedCount = 0;
+        for (const p of parsed) {
+          if (!p.name) continue;
+          // Check if companyId already exists to prevent duplicates
+          if (!state.players.some(existing => existing.companyId.toLowerCase() === p.companyId.toLowerCase())) {
+            state.players.push({ name: p.name, companyId: p.companyId || `ID-${Math.floor(Math.random() * 10000)}`, status: 'active' });
+            importedCount++;
+          }
+        }
+        saveState(false);
+        renderHostView();
+        showToast(`Successfully imported ${importedCount} participants!`, 'success');
+        
+        // Reset file input value so user can upload the same file again if needed
+        csvFileInput.value = '';
+      };
+      reader.readAsText(file);
+    });
+  }
 
   // Export PDF
   document.getElementById('btn-export-pdf').addEventListener('click', () => window.print());
@@ -2596,5 +2720,237 @@ function setupDragAndDrop() {
       }
       tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('drag-over', 'dragging'));
     });
+  }
+}
+
+// ==========================================================================
+// UNIFIED DOUBLE ELIMINATION CANVAS RENDERER
+// ==========================================================================
+function renderUnifiedDoubleBracket(canvasId, isLive) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !state || !state.bracket) return;
+  canvas.innerHTML = '';
+
+  // SVG overlay for connector lines
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'connector-svg');
+  svg.id = `svg-unified-${canvasId}`;
+  canvas.appendChild(svg);
+
+  // Create layout wrapper
+  const wrapper = document.createElement('div');
+  wrapper.className = 'unified-layout-wrapper';
+
+  const bracketsCol = document.createElement('div');
+  bracketsCol.className = 'unified-brackets-column';
+
+  // 1. Winners Bracket Row
+  const winnersRow = document.createElement('div');
+  winnersRow.className = 'unified-bracket-row winners-row';
+  const winnersLabel = document.createElement('div');
+  winnersLabel.className = 'unified-row-label';
+  winnersLabel.textContent = 'Winners Bracket';
+  winnersRow.appendChild(winnersLabel);
+
+  const winnersRoundsCont = document.createElement('div');
+  winnersRoundsCont.className = 'unified-rounds-container';
+  renderRoundColumnsInto(winnersRoundsCont, state.bracket.winnersRounds, 'w', canvasId, isLive);
+  winnersRow.appendChild(winnersRoundsCont);
+  bracketsCol.appendChild(winnersRow);
+
+  // 2. Losers Bracket Row
+  const losersRow = document.createElement('div');
+  losersRow.className = 'unified-bracket-row losers-row';
+  const losersLabel = document.createElement('div');
+  losersLabel.className = 'unified-row-label';
+  losersLabel.textContent = 'Losers Bracket';
+  losersRow.appendChild(losersLabel);
+
+  const losersRoundsCont = document.createElement('div');
+  losersRoundsCont.className = 'unified-rounds-container';
+  renderRoundColumnsInto(losersRoundsCont, state.bracket.losersRounds, 'l', canvasId, isLive);
+  losersRow.appendChild(losersRoundsCont);
+  bracketsCol.appendChild(losersRow);
+
+  wrapper.appendChild(bracketsCol);
+
+  // 3. Grand Final Column (placed on the right)
+  const gfCol = document.createElement('div');
+  gfCol.className = 'unified-gf-column';
+  const gfLabel = document.createElement('div');
+  gfLabel.className = 'unified-row-label';
+  gfLabel.textContent = 'Grand Final';
+  gfCol.appendChild(gfLabel);
+
+  const gfMatchCont = document.createElement('div');
+  gfMatchCont.className = 'unified-gf-match-container';
+  renderGrandFinalInto(gfMatchCont, canvasId, isLive);
+  gfCol.appendChild(gfMatchCont);
+  wrapper.appendChild(gfCol);
+
+  canvas.appendChild(wrapper);
+
+  // Draw connector lines for all sections
+  setTimeout(() => {
+    drawUnifiedConnectors(canvas, `svg-unified-${canvasId}`, canvasId);
+  }, 120);
+}
+
+function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
+  if (!rounds || !rounds.length) return;
+
+  rounds.forEach((round, rIdx) => {
+    const col = document.createElement('div');
+    col.className = 'round-column';
+
+    const header = document.createElement('div');
+    header.className = 'round-title-header';
+    const isFinal = rIdx === rounds.length - 1;
+    if (prefix === 'w') {
+      header.textContent = isFinal
+        ? (state.bracket.type === 'double' ? 'Winners Final' : 'Final')
+        : `Round ${rIdx + 1}`;
+    } else {
+      header.textContent = isFinal ? 'Losers Final' : `L-Round ${rIdx + 1}`;
+    }
+    col.appendChild(header);
+
+    round.forEach((match, mIdx) => {
+      const p1 = getPlayerInfo(match.players[0]);
+      const p2 = getPlayerInfo(match.players[1]);
+
+      const node = document.createElement('div');
+      node.className = `match-node ${match.status}`;
+      node.id = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
+
+      let hdrHtml = match.isThirdPlace ? '3rd Place Match' : `Match ${mIdx + 1}`;
+      let hdrCls = '';
+      if (match.status === 'in-progress') { hdrHtml = '<i class="fa-solid fa-gamepad"></i> Playing'; hdrCls = 'active-tag'; }
+
+      const p1W = match.winner === match.players[0] && match.status === 'completed';
+      const p2W = match.winner === match.players[1] && match.status === 'completed';
+      const clickable = !isLive && state.status === 'running';
+      const clickStr = clickable ? `onclick="handleMatchClick('${prefix}','${canvasId}',${rIdx},${mIdx})"` : '';
+
+      const showByeFill = !isLive && state.status === 'running';
+      const p1IsBye = (match.players[0] === -2 || (match.players[0] >= (state.players?.length || 0) && match.players[0] >= 0));
+      const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
+
+      const p1Row = showByeFill && p1IsBye
+        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
+        : `<span class="team-name" title="${escapeHTML(p1.name)}">${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>`;
+
+      const p2Row = showByeFill && p2IsBye
+        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
+        : `<span class="team-name" title="${escapeHTML(p2.name)}">${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>`;
+
+      node.innerHTML = `
+        <div class="match-node-header ${hdrCls}">${hdrHtml}</div>
+        <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls}" ${clickStr}>${p1Row}</div>
+        <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls}" ${clickStr}>${p2Row}</div>
+      `;
+      col.appendChild(node);
+    });
+
+    container.appendChild(col);
+  });
+}
+
+function renderGrandFinalInto(container, canvasId, isLive) {
+  const gf = state.bracket.grandFinal;
+  if (!gf) return;
+
+  const col = document.createElement('div');
+  col.className = 'round-column';
+
+  const header = document.createElement('div');
+  header.className = 'round-title-header';
+  header.textContent = 'Grand Final';
+  col.appendChild(header);
+
+  const p1 = getPlayerInfo(gf.players[0]);
+  const p2 = getPlayerInfo(gf.players[1]);
+
+  const node = document.createElement('div');
+  node.className = `match-node ${gf.status}`;
+  node.id = `mn-gf-${canvasId}-0-0`;
+
+  let hdrHtml = 'Grand Final';
+  let hdrCls = '';
+  if (gf.status === 'in-progress') { hdrHtml = '<i class="fa-solid fa-gamepad"></i> Playing'; hdrCls = 'active-tag'; }
+
+  const p1W = gf.winner === gf.players[0] && gf.status === 'completed';
+  const p2W = gf.winner === gf.players[1] && gf.status === 'completed';
+  const clickable = !isLive && state.status === 'running';
+  const clickStr = clickable ? `onclick="handleMatchClick('gf','${canvasId}',0,0)"` : '';
+
+  const p1Row = `<span class="team-name" title="${escapeHTML(p1.name)}">${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>`;
+  const p2Row = `<span class="team-name" title="${escapeHTML(p2.name)}">${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>`;
+
+  node.innerHTML = `
+    <div class="match-node-header ${hdrCls}">${hdrHtml}</div>
+    <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls}" ${clickStr}>${p1Row}</div>
+    <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls}" ${clickStr}>${p2Row}</div>
+  `;
+  col.appendChild(node);
+
+  if (gf.status === 'completed' && gf.winner === gf.players[1]) {
+    const nodeReset = document.createElement('div');
+    const gfReset = state.bracket.grandFinalReset || { id: 'gfr', players: [gf.players[0], gf.players[1]], scores: [0,0], winner: null, status: 'pending' };
+    state.bracket.grandFinalReset = gfReset;
+
+    nodeReset.className = `match-node ${gfReset.status}`;
+    nodeReset.id = `mn-gfr-${canvasId}-0-0`;
+    nodeReset.style.marginTop = '1.5rem';
+
+    const pr1 = getPlayerInfo(gfReset.players[0]);
+    const pr2 = getPlayerInfo(gfReset.players[1]);
+    const pr1W = gfReset.winner === gfReset.players[0] && gfReset.status === 'completed';
+    const pr2W = gfReset.winner === gfReset.players[1] && gfReset.status === 'completed';
+    const clickStrReset = clickable ? `onclick="handleMatchClick('gfr','${canvasId}',0,0)"` : '';
+
+    const pr1Row = `<span class="team-name" title="${escapeHTML(pr1.name)}">${escapeHTML(pr1.name)}</span><span class="team-score">${pr1W ? 'W' : ''}</span>`;
+    const pr2Row = `<span class="team-name" title="${escapeHTML(pr2.name)}">${escapeHTML(pr2.name)}</span><span class="team-score">${pr2W ? 'W' : ''}</span>`;
+
+    nodeReset.innerHTML = `
+      <div class="match-node-header ${gfReset.status === 'in-progress' ? 'active-tag' : ''}">GF Bracket Reset</div>
+      <div class="team-row ${pr1W ? 'winner' : ''} ${pr2W ? 'loser' : ''} ${pr1.cls}" ${clickStrReset}>${pr1Row}</div>
+      <div class="team-row ${pr2W ? 'winner' : ''} ${pr1W ? 'loser' : ''} ${pr2.cls}" ${clickStrReset}>${pr2Row}</div>
+    `;
+    col.appendChild(nodeReset);
+  }
+
+  container.appendChild(col);
+}
+
+function drawUnifiedConnectors(canvas, svgId, canvasId) {
+  const svg = document.getElementById(svgId);
+  if (!svg || !state?.bracket) return;
+
+  svg.innerHTML = '';
+  svg.setAttribute('width', Math.max(canvas.scrollWidth, 2000));
+  svg.setAttribute('height', Math.max(canvas.scrollHeight, 1000));
+
+  // 1. Winners Bracket connectors
+  drawConnectorGroup(svg, canvas, 'w', canvasId, state.bracket.winnersRounds);
+
+  // 2. Losers Bracket connectors
+  drawConnectorGroup(svg, canvas, 'l', canvasId, state.bracket.losersRounds);
+
+  // 3. Connect Winners Final to Grand Final
+  const wfRIdx = state.bracket.winnersRounds.length - 1;
+  const wfId = `mn-w-${canvasId}-${wfRIdx}-0`;
+  const gfId = `mn-gf-${canvasId}-0-0`;
+  drawSingleConnectorLine(svg, canvas, wfId, gfId);
+
+  // 4. Connect Losers Final to Grand Final
+  const lfRIdx = state.bracket.losersRounds.length - 1;
+  const lfId = `mn-l-${canvasId}-${lfRIdx}-0`;
+  drawSingleConnectorLine(svg, canvas, lfId, gfId);
+
+  // 5. Connect Grand Final to Grand Final Reset (if active)
+  const gfrId = `mn-gfr-${canvasId}-0-0`;
+  if (document.getElementById(gfrId)) {
+    drawSingleConnectorLine(svg, canvas, gfId, gfrId);
   }
 }

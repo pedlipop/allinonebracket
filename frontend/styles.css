@@ -2196,3 +2196,90 @@ select {
 .login-btn i {
   margin-right: 0.5rem;
 }
+
+/* ==========================================================================
+   UNIFIED DOUBLE ELIMINATION CANVAS LAYOUT
+   ========================================================================== */
+.unified-double-canvas {
+  width: auto !important;
+  height: auto !important;
+  min-width: 100%;
+  min-height: 100%;
+  padding: 4rem !important;
+}
+
+.unified-layout-wrapper {
+  display: flex;
+  flex-direction: row;
+  gap: 6rem;
+  align-items: stretch;
+}
+
+.unified-brackets-column {
+  display: flex;
+  flex-direction: column;
+  gap: 5rem;
+  flex: 1;
+}
+
+.unified-bracket-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background: rgba(7, 8, 13, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 2rem;
+  border-radius: var(--border-radius-lg);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.unified-row-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  color: var(--accent-cyan);
+  margin-bottom: 0.5rem;
+  opacity: 0.8;
+  border-left: 3px solid var(--accent-cyan);
+  padding-left: 0.75rem;
+}
+
+.losers-row .unified-row-label {
+  color: var(--warning);
+  border-left-color: var(--warning);
+}
+
+.unified-gf-column .unified-row-label {
+  color: #ffd700;
+  border-left-color: #ffd700;
+}
+
+.unified-rounds-container {
+  display: flex;
+  flex-direction: row;
+  gap: 6rem;
+  align-items: center;
+}
+
+.unified-gf-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background: rgba(255, 215, 0, 0.03);
+  border: 1px solid rgba(255, 215, 0, 0.08);
+  padding: 2rem;
+  border-radius: var(--border-radius-lg);
+  justify-content: center;
+  align-items: center;
+  min-width: 320px;
+}
+
+.unified-gf-match-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
