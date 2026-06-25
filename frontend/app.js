@@ -401,13 +401,55 @@ function renderHostView() {
   if (nameEl) nameEl.innerHTML = `${escapeHTML(state.name)}<span></span>`;
 
   const isActive = state.status === 'running' || state.status === 'paused';
+  const isRegistration = state.status === 'registration';
 
-  document.getElementById('setup-panel').classList.toggle('hidden', isActive);
+  document.getElementById('qr-panel').classList.toggle('hidden', !isRegistration);
+  document.getElementById('setup-panel').classList.toggle('hidden', isActive || isRegistration);
   document.getElementById('btn-pause').classList.toggle('hidden', !isActive);
   document.getElementById('btn-reset-tournament').classList.toggle('hidden', !isActive);
 
+  // If page was loaded during registration phase, restore QR Panel values and start countdown
+  if (isRegistration) {
+    const tid = state.id;
+    const loc = window.location;
+    const regUrl = `${loc.origin}${loc.pathname}?register=true&tid=${encodeURIComponent(tid)}`;
+    
+    const regInput = document.getElementById('registration-url-input');
+    if (regInput) regInput.value = regUrl;
+
+    const compNameEl = document.getElementById('qr-competition-name');
+    if (compNameEl) compNameEl.textContent = state.name;
+
+    const qrImg = document.getElementById('qr-image');
+    if (qrImg && !qrImg.src) {
+      generateQRCode(regUrl).then(url => {
+        qrImg.src = url;
+      });
+    }
+
+    if (state.registrationTimer && state.registrationTimer.isActive) {
+      const remaining = Math.max(0, Math.ceil((state.registrationTimer.endTime - Date.now()) / 1000));
+      if (remaining <= 0) {
+        state.registrationTimer.isActive = false;
+        state.status = 'setup';
+        setTimeout(() => {
+          saveState();
+          renderHostView();
+        }, 0);
+        return;
+      }
+      state.registrationTimer.remaining = remaining;
+      if (!timerInterval) {
+        startRegistrationTimer();
+      }
+    } else {
+      const cd = document.getElementById('registration-countdown');
+      if (cd) cd.textContent = '∞';
+    }
+  }
+
   // Start: allow with >= 2 players
-  const canStart = state.status === 'setup' && (state.players || []).length >= 2;
+  const canStart = (state.status === 'setup' || state.status === 'registration') && (state.players || []).length >= 2;
   document.getElementById('btn-start').classList.toggle('hidden', !canStart);
 
   if (isActive) {
@@ -1630,10 +1672,12 @@ function openQRRegistration() {
   // FIXED ID: 'registration-timer-select' (was 'registration-timer' — broken)
   const timerEl = document.getElementById('registration-timer-select');
   const duration = timerEl ? (parseInt(timerEl.value) || 0) : 60;
+  const endTime = duration > 0 ? (Date.now() + duration * 1000) : null;
 
   state.registrationTimer = {
     duration,
     remaining: duration,
+    endTime,
     isActive: duration > 0
   };
 
@@ -1676,12 +1720,16 @@ function startRegistrationTimer() {
 
   timerInterval = setInterval(() => {
     if (!state?.registrationTimer?.isActive) { clearInterval(timerInterval); return; }
-    state.registrationTimer.remaining--;
+    
+    // Calculate accurate remaining time based on absolute endTime
+    const remaining = Math.max(0, Math.ceil((state.registrationTimer.endTime - Date.now()) / 1000));
+    state.registrationTimer.remaining = remaining;
+
     if (countdownEl) {
-      const rem = state.registrationTimer.remaining;
-      countdownEl.textContent = rem > 60 ? `${Math.floor(rem/60)}m ${rem%60}s` : `${rem}s`;
+      countdownEl.textContent = remaining > 60 ? `${Math.floor(remaining/60)}m ${remaining%60}s` : `${remaining}s`;
     }
-    if (state.registrationTimer.remaining <= 0) {
+    
+    if (remaining <= 0) {
       clearInterval(timerInterval);
       closeQRRegistration();
     }
@@ -1768,32 +1816,33 @@ function startClientRegistrationTimer() {
   const countdownEl = document.getElementById('register-time-left');
   const timerContainer = document.getElementById('register-timer-countdown');
 
-  if (!state || !state.registrationTimer || !state.registrationTimer.isActive) {
+  if (!state || !state.registrationTimer || !state.registrationTimer.isActive || !state.registrationTimer.endTime) {
     if (timerContainer) timerContainer.classList.add('hidden');
     return;
   }
 
-  if (state.registrationTimer.remaining <= 0) {
+  const initialRemaining = Math.max(0, Math.ceil((state.registrationTimer.endTime - Date.now()) / 1000));
+  if (initialRemaining <= 0) {
     if (timerContainer) timerContainer.classList.add('hidden');
     return;
   }
 
   if (timerContainer) timerContainer.classList.remove('hidden');
   if (countdownEl) {
-    const rem = state.registrationTimer.remaining;
-    countdownEl.textContent = rem > 60 ? `${Math.floor(rem/60)}m ${rem%60}s` : `${rem}s`;
+    countdownEl.textContent = initialRemaining > 60 ? `${Math.floor(initialRemaining/60)}m ${initialRemaining%60}s` : `${initialRemaining}s`;
   }
 
   clientTimerInterval = setInterval(() => {
-    if (!state?.registrationTimer?.isActive) {
+    if (!state?.registrationTimer?.isActive || !state.registrationTimer.endTime) {
       clearInterval(clientTimerInterval);
       if (timerContainer) timerContainer.classList.add('hidden');
       return;
     }
     
-    state.registrationTimer.remaining--;
+    const remaining = Math.max(0, Math.ceil((state.registrationTimer.endTime - Date.now()) / 1000));
+    state.registrationTimer.remaining = remaining;
     
-    if (state.registrationTimer.remaining <= 0) {
+    if (remaining <= 0) {
       state.registrationTimer.isActive = false;
       clearInterval(clientTimerInterval);
       if (timerContainer) timerContainer.classList.add('hidden');
@@ -1802,8 +1851,7 @@ function startClientRegistrationTimer() {
     }
     
     if (countdownEl) {
-      const rem = state.registrationTimer.remaining;
-      countdownEl.textContent = rem > 60 ? `${Math.floor(rem/60)}m ${rem%60}s` : `${rem}s`;
+      countdownEl.textContent = remaining > 60 ? `${Math.floor(remaining/60)}m ${remaining%60}s` : `${remaining}s`;
     }
   }, 1000);
 }
