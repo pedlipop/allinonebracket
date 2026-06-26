@@ -833,6 +833,26 @@ select {
 .btn-lock-seed.locked {
   color: var(--warning);
 }
+.btn-lock-match {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.15rem;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.btn-lock-match:hover {
+  color: var(--warning);
+  transform: scale(1.1);
+}
+.btn-lock-match.locked {
+  color: var(--warning);
+}
 .team-row.locked-seed {
   border: 1px solid rgba(255, 165, 2, 0.25);
   background: rgba(255, 165, 2, 0.05);

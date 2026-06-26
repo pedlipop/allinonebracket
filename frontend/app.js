@@ -1792,32 +1792,27 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
 
       let p1RowPrefix = '';
       let p2RowPrefix = '';
-      let p1RowSuffix = '';
-      let p2RowSuffix = '';
 
       if (!isLive && prefix === 'w' && rIdx === 0) {
-        // Show Seed Badge and Lock/Unlock Icon
-        const lockIcon1 = isSeedLocked1 ? 'fa-lock' : 'fa-lock-open';
-        const lockIcon2 = isSeedLocked2 ? 'fa-lock' : 'fa-lock-open';
-        const lockClass1 = isSeedLocked1 ? 'locked' : '';
-        const lockClass2 = isSeedLocked2 ? 'locked' : '';
-
         p1RowPrefix = `<span class="seed-badge">Seed #${seed1}</span>`;
         p2RowPrefix = `<span class="seed-badge">Seed #${seed2}</span>`;
+      }
 
-        if (state.status === 'setup') {
-          p1RowSuffix = `<button class="btn-lock-seed ${lockClass1}" onclick="event.stopPropagation(); toggleSeedLock(${seed1})"><i class="fa-solid ${lockIcon1}"></i></button>`;
-          p2RowSuffix = `<button class="btn-lock-seed ${lockClass2}" onclick="event.stopPropagation(); toggleSeedLock(${seed2})"><i class="fa-solid ${lockIcon2}"></i></button>`;
-        }
+      let headerLockBtn = '';
+      if (!isLive && prefix === 'w' && rIdx === 0 && state.status === 'setup') {
+        const isLocked = isSeedLocked1 && isSeedLocked2;
+        const lockIcon = isLocked ? 'fa-lock' : 'fa-lock-open';
+        const lockClass = isLocked ? 'locked' : '';
+        headerLockBtn = `<button class="btn-lock-match ${lockClass}" onclick="event.stopPropagation(); toggleMatchSeedsLock(${seed1}, ${seed2})" title="Lock/Unlock Seeds"><i class="fa-solid ${lockIcon}"></i></button>`;
       }
 
       const p1Row = showByeFill && p1IsBye
         ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> ${getTranslation('fill_slot')}</button>`
-        : `<span class="team-name" title="${escapeHTML(p1.name)}">${p1RowPrefix}${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>${p1RowSuffix}`;
+        : `<span class="team-name" title="${escapeHTML(p1.name)}">${p1RowPrefix}${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>`;
 
       const p2Row = showByeFill && p2IsBye
         ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> ${getTranslation('fill_slot')}</button>`
-        : `<span class="team-name" title="${escapeHTML(p2.name)}">${p2RowPrefix}${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>${p2RowSuffix}`;
+        : `<span class="team-name" title="${escapeHTML(p2.name)}">${p2RowPrefix}${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>`;
 
       const drAttr1 = canDrag ? `draggable="true" data-seed="${seed1}"` : '';
       const drAttr2 = canDrag ? `draggable="true" data-seed="${seed2}"` : '';
@@ -1827,7 +1822,7 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
       const lockedSeedClass2 = isSeedLocked2 ? 'locked-seed' : '';
 
       node.innerHTML = `
-        <div class="match-node-header ${hdrCls}">${hdrHtml}</div>
+        <div class="match-node-header ${hdrCls}"><span>${hdrHtml}</span>${headerLockBtn}</div>
         <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls} ${dragClass1} ${lockedSeedClass1}" ${drAttr1} ${clickStr}>${p1Row}</div>
         <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls} ${dragClass2} ${lockedSeedClass2}" ${drAttr2} ${clickStr}>${p2Row}</div>
       `;
@@ -3637,6 +3632,26 @@ function toggleSeedLock(seedNum) {
   renderHostView();
 }
 
+function toggleMatchSeedsLock(seed1, seed2) {
+  if (!state) return;
+  state.lockedSeeds = state.lockedSeeds || [];
+  const has1 = state.lockedSeeds.includes(seed1);
+  const has2 = state.lockedSeeds.includes(seed2);
+  
+  if (has1 && has2) {
+    // Both locked: unlock both
+    state.lockedSeeds = state.lockedSeeds.filter(s => s !== seed1 && s !== seed2);
+    showToast(`Match seeds unlocked.`, 'info');
+  } else {
+    // Lock both
+    if (!has1) state.lockedSeeds.push(seed1);
+    if (!has2) state.lockedSeeds.push(seed2);
+    showToast(`Match seeds locked.`, 'info');
+  }
+  saveState(false);
+  renderHostView();
+}
+
 function swapPlayerSeeds(srcSeed, tgtSeed) {
   if (!state || state.status !== 'setup') return;
 
@@ -3853,31 +3868,27 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
 
       let p1RowPrefix = '';
       let p2RowPrefix = '';
-      let p1RowSuffix = '';
-      let p2RowSuffix = '';
 
       if (!isLive && prefix === 'w' && rIdx === 0) {
-        const lockIcon1 = isSeedLocked1 ? 'fa-lock' : 'fa-lock-open';
-        const lockIcon2 = isSeedLocked2 ? 'fa-lock' : 'fa-lock-open';
-        const lockClass1 = isSeedLocked1 ? 'locked' : '';
-        const lockClass2 = isSeedLocked2 ? 'locked' : '';
-
         p1RowPrefix = `<span class="seed-badge">Seed #${seed1}</span>`;
         p2RowPrefix = `<span class="seed-badge">Seed #${seed2}</span>`;
+      }
 
-        if (state.status === 'setup') {
-          p1RowSuffix = `<button class="btn-lock-seed ${lockClass1}" onclick="event.stopPropagation(); toggleSeedLock(${seed1})"><i class="fa-solid ${lockIcon1}"></i></button>`;
-          p2RowSuffix = `<button class="btn-lock-seed ${lockClass2}" onclick="event.stopPropagation(); toggleSeedLock(${seed2})"><i class="fa-solid ${lockIcon2}"></i></button>`;
-        }
+      let headerLockBtn = '';
+      if (!isLive && prefix === 'w' && rIdx === 0 && state.status === 'setup') {
+        const isLocked = isSeedLocked1 && isSeedLocked2;
+        const lockIcon = isLocked ? 'fa-lock' : 'fa-lock-open';
+        const lockClass = isLocked ? 'locked' : '';
+        headerLockBtn = `<button class="btn-lock-match ${lockClass}" onclick="event.stopPropagation(); toggleMatchSeedsLock(${seed1}, ${seed2})" title="Lock/Unlock Seeds"><i class="fa-solid ${lockIcon}"></i></button>`;
       }
 
       const p1Row = showByeFill && p1IsBye
         ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> ${getTranslation('fill_slot')}</button>`
-        : `<span class="team-name" title="${escapeHTML(p1.name)}">${p1RowPrefix}${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>${p1RowSuffix}`;
+        : `<span class="team-name" title="${escapeHTML(p1.name)}">${p1RowPrefix}${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>`;
 
       const p2Row = showByeFill && p2IsBye
         ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> ${getTranslation('fill_slot')}</button>`
-        : `<span class="team-name" title="${escapeHTML(p2.name)}">${p2RowPrefix}${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>${p2RowSuffix}`;
+        : `<span class="team-name" title="${escapeHTML(p2.name)}">${p2RowPrefix}${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>`;
 
       const drAttr1 = canDrag ? `draggable="true" data-seed="${seed1}"` : '';
       const drAttr2 = canDrag ? `draggable="true" data-seed="${seed2}"` : '';
@@ -3887,7 +3898,7 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
       const lockedSeedClass2 = isSeedLocked2 ? 'locked-seed' : '';
 
       node.innerHTML = `
-        <div class="match-node-header ${hdrCls}">${hdrHtml}</div>
+        <div class="match-node-header ${hdrCls}"><span>${hdrHtml}</span>${headerLockBtn}</div>
         <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls} ${dragClass1} ${lockedSeedClass1}" ${drAttr1} ${clickStr}>${p1Row}</div>
         <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls} ${dragClass2} ${lockedSeedClass2}" ${drAttr2} ${clickStr}>${p2Row}</div>
       `;
