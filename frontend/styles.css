@@ -2456,4 +2456,33 @@ select {
   display: none !important;
 }
 
+/* Drag & Drop Bidirectional Highlighting and Animation */
+@keyframes border-pulse {
+  0% {
+    box-shadow: 0 0 4px rgba(0, 210, 255, 0.4);
+    border-color: rgba(0, 210, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(0, 210, 255, 0.8);
+    border-color: var(--accent-cyan);
+  }
+  100% {
+    box-shadow: 0 0 4px rgba(0, 210, 255, 0.4);
+    border-color: rgba(0, 210, 255, 0.5);
+  }
+}
+
+.team-row.bracket-drag-highlight {
+  animation: border-pulse 1.2s infinite ease-in-out;
+  background: rgba(0, 210, 255, 0.08) !important;
+  z-index: 5;
+}
+
+.player-item-row.sidebar-drag-highlight {
+  animation: border-pulse 1.2s infinite ease-in-out;
+  background: rgba(0, 210, 255, 0.08) !important;
+  transform: scale(1.02);
+  z-index: 5;
+}
+
 

@@ -3503,8 +3503,15 @@ function setupDragAndDrop() {
         e.preventDefault();
         return;
       }
-      e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'sidebar', index: parseInt(row.dataset.index) }));
+      const playerIdx = parseInt(row.dataset.index);
+      e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'sidebar', index: playerIdx }));
       row.classList.add('dragging');
+
+      // Highlight the matching seed slot in the bracket view!
+      const targetSeed = playerIdx + 1;
+      document.querySelectorAll(`.team-row[data-seed="${targetSeed}"]`).forEach(el => {
+        el.classList.add('bracket-drag-highlight');
+      });
     });
 
     sidebarList.addEventListener('dragover', (e) => {
@@ -3541,6 +3548,8 @@ function setupDragAndDrop() {
         row.setAttribute('draggable', 'false');
       }
       sidebarList.querySelectorAll('.player-item-row').forEach(r => r.classList.remove('drag-over', 'dragging'));
+      // Remove bracket highlights
+      document.querySelectorAll('.team-row').forEach(el => el.classList.remove('bracket-drag-highlight'));
     });
   }
 
@@ -3565,8 +3574,15 @@ function setupDragAndDrop() {
         e.preventDefault();
         return;
       }
-      e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'table', index: parseInt(row.dataset.index) }));
+      const playerIdx = parseInt(row.dataset.index);
+      e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'table', index: playerIdx }));
       row.classList.add('dragging');
+
+      // Highlight the matching seed slot in the bracket view!
+      const targetSeed = playerIdx + 1;
+      document.querySelectorAll(`.team-row[data-seed="${targetSeed}"]`).forEach(el => {
+        el.classList.add('bracket-drag-highlight');
+      });
     });
 
     tableBody.addEventListener('dragover', (e) => {
@@ -3603,6 +3619,8 @@ function setupDragAndDrop() {
         row.setAttribute('draggable', 'false');
       }
       tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('drag-over', 'dragging'));
+      // Remove bracket highlights
+      document.querySelectorAll('.team-row').forEach(el => el.classList.remove('bracket-drag-highlight'));
     });
   }
 
@@ -3626,6 +3644,12 @@ function setupDragAndDrop() {
       }
       e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'bracket', seed }));
       row.classList.add('dragging');
+
+      // Highlight matching player row in sidebar list!
+      const playerIdx = seed - 1;
+      document.querySelectorAll(`.player-item-row[data-index="${playerIdx}"]`).forEach(el => {
+        el.classList.add('sidebar-drag-highlight');
+      });
     });
 
     container.addEventListener('dragover', (e) => {
@@ -3669,6 +3693,8 @@ function setupDragAndDrop() {
 
     container.addEventListener('dragend', (e) => {
       container.querySelectorAll('.team-row.draggable').forEach(r => r.classList.remove('dragging', 'drag-over'));
+      // Remove sidebar highlights
+      document.querySelectorAll('.player-item-row').forEach(el => el.classList.remove('sidebar-drag-highlight'));
     });
   });
 }
