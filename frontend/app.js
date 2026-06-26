@@ -1140,7 +1140,7 @@ function buildSingleBracket(size, seeded) {
     const p2B = seeded[p2i]?.status === 'bye';
     const p1Orig = seeded[p1i].originalIndex;
     const p2Orig = seeded[p2i].originalIndex;
-    if (state && state.status === 'running') {
+    if (state && (state.status === 'running' || state.status === 'setup')) {
       if (p1B && p2B) { winner = p1Orig; status = 'completed'; }
       else if (p1B)   { winner = p2Orig; status = 'completed'; }
       else if (p2B)   { winner = p1Orig; status = 'completed'; }
@@ -1190,7 +1190,7 @@ function buildDoubleBracket(size, seeded) {
     const p2B = seeded[p2i]?.status === 'bye';
     const p1Orig = seeded[p1i].originalIndex;
     const p2Orig = seeded[p2i].originalIndex;
-    if (state && state.status === 'running') {
+    if (state && (state.status === 'running' || state.status === 'setup')) {
       if (p1B && p2B) { winner = p1Orig; status = 'completed'; }
       else if (p1B)   { winner = p2Orig; status = 'completed'; }
       else if (p2B)   { winner = p1Orig; status = 'completed'; }
@@ -1286,7 +1286,7 @@ function propagateWinnersRound(rIdx) {
     const [p1, p2] = m.players;
     if (p1 === -1 || p2 === -1) return;
     const p1B = isByePlayer(p1), p2B = isByePlayer(p2);
-    if (state && state.status === 'running') {
+    if (state && (state.status === 'running' || state.status === 'setup')) {
       if (p1B && p2B)    { m.winner = p1; m.status = 'completed'; }
       else if (p1B)      { m.winner = p2; m.status = 'completed'; }
       else if (p2B)      { m.winner = p1; m.status = 'completed'; }
@@ -1327,7 +1327,7 @@ function propagateDoubleElim() {
       const [p1, p2] = m.players;
       if (p1 === -1 || p2 === -1) return;
       const p1B = isByePlayer(p1), p2B = isByePlayer(p2);
-      if (state && state.status === 'running') {
+      if (state && (state.status === 'running' || state.status === 'setup')) {
         if (p1B && p2B) { m.winner = p1; m.status = 'completed'; }
         else if (p1B)   { m.winner = p2; m.status = 'completed'; }
         else if (p2B)   { m.winner = p1; m.status = 'completed'; }
@@ -1379,7 +1379,7 @@ function propagateDoubleElim() {
       const [p1, p2] = m.players;
       if (p1 === -1 || p2 === -1) return;
       const p1B = isByePlayer(p1), p2B = isByePlayer(p2);
-      if (state && state.status === 'running') {
+      if (state && (state.status === 'running' || state.status === 'setup')) {
         if (p1B && p2B) { m.winner = p1; m.status = 'completed'; }
         else if (p1B)   { m.winner = p2; m.status = 'completed'; }
         else if (p2B)   { m.winner = p1; m.status = 'completed'; }
@@ -1580,24 +1580,46 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
   const numRounds = rounds.length;
   const canvasWidth = numRounds * roundWidth + 100;
 
-  // Winners Bracket layout logic (recursive vertical centering)
+  // Winners & Losers Bracket layout logic (recursive vertical centering)
   // Store computed top coordinates in match objects for quick retrieval
   rounds.forEach((round, rIdx) => {
     round.forEach((match, mIdx) => {
       let topVal;
-      if (rIdx === 0) {
-        // Round 0: spaced evenly
-        topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap);
-      } else {
-        // Subsequent rounds: center parent card between its two child cards
-        const child1Top = rounds[rIdx - 1][mIdx * 2]?.yCoord;
-        const child2Top = rounds[rIdx - 1][mIdx * 2 + 1]?.yCoord;
-        if (child1Top !== undefined && child2Top !== undefined) {
-          topVal = (child1Top + child2Top) / 2;
-        } else if (child1Top !== undefined) {
-          topVal = child1Top;
+      if (prefix === 'w') {
+        if (rIdx === 0) {
+          // Round 0: spaced evenly
+          topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap);
         } else {
-          topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * Math.pow(2, rIdx));
+          // Subsequent rounds: center parent card between its two child cards
+          const child1Top = rounds[rIdx - 1][mIdx * 2]?.yCoord;
+          const child2Top = rounds[rIdx - 1][mIdx * 2 + 1]?.yCoord;
+          if (child1Top !== undefined && child2Top !== undefined) {
+            topVal = (child1Top + child2Top) / 2;
+          } else if (child1Top !== undefined) {
+            topVal = child1Top;
+          } else {
+            topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * Math.pow(2, rIdx));
+          }
+        }
+      } else {
+        // Losers Bracket
+        if (rIdx === 0) {
+          // Space LR0 matches wider (same spacing as Winners Round 1 since it has half the matches of WR0)
+          topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * 2.5 + matchHeight / 2);
+        } else if (rIdx % 2 === 1) {
+          // External Round: same number of matches as previous losers round. Align directly.
+          topVal = rounds[rIdx - 1][mIdx]?.yCoord;
+        } else {
+          // Internal Round: half the number of matches as previous losers round. Center between them.
+          const child1Top = rounds[rIdx - 1][mIdx * 2]?.yCoord;
+          const child2Top = rounds[rIdx - 1][mIdx * 2 + 1]?.yCoord;
+          if (child1Top !== undefined && child2Top !== undefined) {
+            topVal = (child1Top + child2Top) / 2;
+          } else if (child1Top !== undefined) {
+            topVal = child1Top;
+          } else {
+            topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * Math.pow(2, Math.floor(rIdx / 2) + 1));
+          }
         }
       }
       match.yCoord = topVal;
@@ -1673,8 +1695,8 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
 
       // Bye filler for setup (both brackets)
       const showByeFill = !isLive && (state.status === 'running' || state.status === 'setup') && match.status !== 'completed';
-      const p1IsBye = (match.players[0] === -2 || (match.players[0] >= (state.players?.length || 0) && match.players[0] >= 0));
-      const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
+      const p1IsBye = isByePlayer(match.players[0]);
+      const p2IsBye = isByePlayer(match.players[1]);
 
       // Calculate Seed Numbers for Winners Round 0 matches in setup mode
       const seedingOrder = getSeedingOrder(rounds[0].length * 2);
@@ -1753,7 +1775,13 @@ function drawConnectors(canvas, svgId, rounds, prefix, canvasId) {
 
     round.forEach((match, mIdx) => {
       const startId = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
-      const nextMi  = Math.floor(mIdx / 2);
+      let nextMi;
+      if (prefix === 'l') {
+        const isNextInternal = (rIdx + 1) >= 2 && (rIdx + 1) % 2 === 0;
+        nextMi = isNextInternal ? Math.floor(mIdx / 2) : mIdx;
+      } else {
+        nextMi = Math.floor(mIdx / 2);
+      }
       const endId   = `mn-${prefix}-${canvasId}-${rIdx + 1}-${nextMi}`;
 
       const startNode = document.getElementById(startId);
@@ -2059,29 +2087,29 @@ function fillByeSlotDirectly(prefix, canvasId, rIdx, mIdx, slot) {
 
   saveState();
   const newPlayer = { name: name.trim(), companyId: companyId.trim(), status: 'active' };
-  state.players.push(newPlayer);
-  const newIdx = state.players.length - 1;
 
-  let match;
-  if (prefix === 'w') {
-    match = state.bracket.type === 'double'
-      ? state.bracket.winnersRounds[rIdx][mIdx]
-      : state.bracket.rounds[rIdx][mIdx];
-  } else {
-    match = state.bracket.losersRounds[rIdx][mIdx];
+  // Find which seed slot this corresponds to!
+  let seedNum = null;
+  if (rIdx === 0 && prefix === 'w') {
+    const size = state.bracketSize || computeActualBracketSize();
+    const seedingOrder = getSeedingOrder(size);
+    seedNum = seedingOrder[mIdx * 2 + slot];
   }
 
-  match.players[slot] = newIdx;
-  const other = match.players[slot === 0 ? 1 : 0];
-
-  if (isByePlayer(other)) { match.winner = newIdx; match.status = 'completed'; }
-  else { match.winner = null; match.status = 'pending'; }
-
-  if (state.bracket.type === 'double') propagateDoubleElim();
-  else propagateWinnersRound(rIdx);
+  if (seedNum !== null) {
+    // If it's a Round 0 match slot, replace the BYE at that seed index!
+    const size = state.bracketSize || computeActualBracketSize();
+    while (state.players.length < size) {
+      state.players.push({ name: 'BYE', companyId: 'BYE', status: 'bye' });
+    }
+    state.players[seedNum - 1] = newPlayer;
+  } else {
+    // Otherwise fallback to normal available slot insert
+    insertPlayerIntoFirstAvailableSlot(newPlayer);
+  }
 
   saveState(false);
-  renderHostView();
+  generateBracket();
 }
 
 // ==========================================================================
@@ -2090,9 +2118,9 @@ function fillByeSlotDirectly(prefix, canvasId, rIdx, mIdx, slot) {
 function addPlayer(name, companyId) {
   if (!state) return false;
   saveState();
-  state.players.push({ name, companyId, status: 'active' });
+  insertPlayerIntoFirstAvailableSlot({ name, companyId, status: 'active' });
   saveState(false);
-  renderHostView();
+  generateBracket();
   return true;
 }
 
@@ -2117,12 +2145,19 @@ function movePlayerSeeding(index, direction) {
   const newIndex = index + direction;
   if (newIndex < 0 || newIndex >= state.players.length) return;
 
+  const isLockedCurrent = (state.lockedSeeds || []).includes(index + 1);
+  const isLockedTarget = (state.lockedSeeds || []).includes(newIndex + 1);
+  if (isLockedCurrent || isLockedTarget) {
+    showToast('Cannot move players in locked seed slots.', 'warning');
+    return;
+  }
+
   saveState();
   const temp = state.players[index];
   state.players[index] = state.players[newIndex];
   state.players[newIndex] = temp;
   saveState(false);
-  renderHostView();
+  generateBracket();
 }
 
 function movePlayerInList(fromIndex, toIndex) {
@@ -2131,11 +2166,18 @@ function movePlayerInList(fromIndex, toIndex) {
   if (fromIndex < 0 || fromIndex >= state.players.length) return;
   if (toIndex < 0 || toIndex >= state.players.length) return;
 
+  const isLockedFrom = (state.lockedSeeds || []).includes(fromIndex + 1);
+  const isLockedTo = (state.lockedSeeds || []).includes(toIndex + 1);
+  if (isLockedFrom || isLockedTo) {
+    showToast('Cannot move players in locked seed slots.', 'warning');
+    return;
+  }
+
   saveState();
   const player = state.players.splice(fromIndex, 1)[0];
   state.players.splice(toIndex, 0, player);
   saveState(false);
-  renderHostView();
+  generateBracket();
 }
 
 function trackPlayerInBracket(playerIndex) {
@@ -2840,12 +2882,41 @@ function setupEventListeners() {
     if (state.status !== 'setup') { showToast('Can only shuffle before the tournament starts.', 'warning'); return; }
     if (!state.players.length) { showToast('No players to shuffle.', 'info'); return; }
     saveState();
-    for (let i = state.players.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [state.players[i], state.players[j]] = [state.players[j], state.players[i]];
+
+    const size = state.bracketSize || computeActualBracketSize();
+    // Pad state.players up to size so we can shuffle all positions
+    while (state.players.length < size) {
+      state.players.push({ name: 'BYE', companyId: 'BYE', status: 'bye' });
     }
+
+    // Identify indices that are NOT locked
+    const unlockedIndices = [];
+    const unlockedPlayers = [];
+
+    for (let i = 0; i < size; i++) {
+      const isLocked = (state.lockedSeeds || []).includes(i + 1);
+      if (!isLocked) {
+        unlockedIndices.push(i);
+        unlockedPlayers.push(state.players[i]);
+      }
+    }
+
+    // Fisher-Yates shuffle on unlocked players
+    for (let i = unlockedPlayers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const temp = unlockedPlayers[i];
+      unlockedPlayers[i] = unlockedPlayers[j];
+      unlockedPlayers[j] = temp;
+    }
+
+    // Put them back into state.players at the unlocked positions
+    unlockedIndices.forEach((origIdx, shuffleIdx) => {
+      state.players[origIdx] = unlockedPlayers[shuffleIdx];
+    });
+
     saveState(false);
-    renderHostView();
+    generateBracket();
+    showToast('Players shuffled (locked seeds preserved).', 'success');
   });
 
   // Refresh participants list
@@ -2924,16 +2995,27 @@ function setupEventListeners() {
     if (deleteTargetIndex === null || !state) return;
     saveState();
     const isRunning = state.status === 'running' || state.status === 'paused';
-    state.players.splice(deleteTargetIndex, 1);
     if (isRunning) {
+      state.players.splice(deleteTargetIndex, 1);
       state.bracket = null;
       state.status = 'setup';
       showToast('Player removed. Tournament reset to setup.', 'warning');
+    } else {
+      // If seed is locked, prevent deletion
+      const isLocked = (state.lockedSeeds || []).includes(deleteTargetIndex + 1);
+      if (isLocked) {
+        showToast('Cannot delete a player in a locked seed slot.', 'warning');
+        document.getElementById('confirm-delete-modal').classList.add('hidden');
+        deleteTargetIndex = null;
+        return;
+      }
+      state.players[deleteTargetIndex] = { name: 'BYE', companyId: 'BYE', status: 'bye' };
+      showToast('Participant removed (replaced with BYE).', 'info');
     }
     document.getElementById('confirm-delete-modal').classList.add('hidden');
     deleteTargetIndex = null;
     saveState(false);
-    renderHostView();
+    generateBracket();
   });
   const closeDeleteModal = () => {
     document.getElementById('confirm-delete-modal').classList.add('hidden');
@@ -3120,13 +3202,13 @@ function setupEventListeners() {
         for (const p of parsed) {
           if (!p.name) continue;
           // Check if companyId already exists to prevent duplicates
-          if (!state.players.some(existing => existing.companyId.toLowerCase() === p.companyId.toLowerCase())) {
-            state.players.push({ name: p.name, companyId: p.companyId || `ID-${Math.floor(Math.random() * 10000)}`, status: 'active' });
+          if (!state.players.some(existing => existing.companyId && existing.companyId.toLowerCase() === p.companyId.toLowerCase())) {
+            insertPlayerIntoFirstAvailableSlot({ name: p.name, companyId: p.companyId || `ID-${Math.floor(Math.random() * 10000)}`, status: 'active' });
             importedCount++;
           }
         }
         saveState(false);
-        renderHostView();
+        generateBracket();
         showToast(`Successfully imported ${importedCount} participants!`, 'success');
         
         // Reset file input value so user can upload the same file again if needed
@@ -3450,19 +3532,22 @@ function toggleSeedLock(seedNum) {
 
 function swapPlayerSeeds(srcSeed, tgtSeed) {
   if (!state || state.status !== 'setup') return;
-  saveState();
 
   const size = state.bracketSize || computeActualBracketSize();
-  const seedingOrder = getSeedingOrder(size);
   
-  // Find array index in state.players using seeding order
-  const srcPlayerIdx = seedingOrder.indexOf(srcSeed);
-  const tgtPlayerIdx = seedingOrder.indexOf(tgtSeed);
+  // Ensure state.players has enough slots up to size (using BYE objects as placeholders)
+  while (state.players.length < size) {
+    state.players.push({ name: 'BYE', companyId: 'BYE', status: 'bye' });
+  }
 
-  if (srcPlayerIdx > -1 && tgtPlayerIdx > -1) {
-    const temp = state.players[srcPlayerIdx];
-    state.players[srcPlayerIdx] = state.players[tgtPlayerIdx];
-    state.players[tgtPlayerIdx] = temp;
+  const srcIdx = srcSeed - 1;
+  const tgtIdx = tgtSeed - 1;
+
+  if (srcIdx >= 0 && srcIdx < size && tgtIdx >= 0 && tgtIdx < size) {
+    saveState();
+    const temp = state.players[srcIdx];
+    state.players[srcIdx] = state.players[tgtIdx];
+    state.players[tgtIdx] = temp;
     
     saveState(false);
     generateBracket();
@@ -3646,8 +3731,8 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
       const clickStr = clickable ? `onclick="handleMatchClick('${prefix}','${canvasId}',${rIdx},${mIdx})"` : '';
 
       const showByeFill = !isLive && (state.status === 'running' || state.status === 'setup') && match.status !== 'completed';
-      const p1IsBye = (match.players[0] === -2 || (match.players[0] >= (state.players?.length || 0) && match.players[0] >= 0));
-      const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
+      const p1IsBye = isByePlayer(match.players[0]);
+      const p2IsBye = isByePlayer(match.players[1]);
 
       // Calculate Seed Numbers for Winners Round 0 matches in setup mode
       const seedingOrder = getSeedingOrder(rounds[0].length * 2);
@@ -3881,4 +3966,37 @@ function drawSingleConnectorLine(svg, canvas, startId, endId) {
   path.setAttribute('d', `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`);
   path.setAttribute('class', 'connector-line');
   svg.appendChild(path);
+}
+
+function renderGrandFinal(containerId, isLive) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+  const canvasId = isLive ? 'live-bracket-canvas' : 'bracket-canvas';
+  renderGrandFinalInto(container, canvasId, isLive);
+}
+
+function insertPlayerIntoFirstAvailableSlot(player) {
+  const size = state.bracketSize || computeActualBracketSize();
+  
+  // Pad state.players with BYEs up to bracket size so we can fill slots
+  while (state.players.length < size) {
+    state.players.push({ name: 'BYE', companyId: 'BYE', status: 'bye' });
+  }
+  
+  // Find first unlocked BYE slot
+  let targetIdx = -1;
+  for (let i = 0; i < size; i++) {
+    const isLocked = (state.lockedSeeds || []).includes(i + 1);
+    if (!isLocked && (state.players[i].status === 'bye' || state.players[i].name === 'BYE')) {
+      targetIdx = i;
+      break;
+    }
+  }
+  
+  if (targetIdx !== -1) {
+    state.players[targetIdx] = player;
+  } else {
+    state.players.push(player);
+  }
 }
