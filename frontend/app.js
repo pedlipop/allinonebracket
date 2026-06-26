@@ -918,6 +918,9 @@ function renderHostView() {
   const genBtn = document.getElementById('btn-generate-bracket');
   if (genBtn) genBtn.classList.toggle('hidden', !showGenBtn);
 
+  const genOverlay = document.getElementById('bracket-generate-overlay');
+  if (genOverlay) genOverlay.classList.toggle('hidden', !showGenBtn);
+
   if (isActive) {
     const btnPause = document.getElementById('btn-pause');
     if (state.status === 'paused') {
@@ -1278,6 +1281,19 @@ function propagateWinnersRound(rIdx) {
   const next = state.bracket.rounds[rIdx + 1];
   if (!current || !next) return;
 
+  // Auto-complete byes in current round first (e.g. if it was reset or just generated/updated)
+  current.forEach(m => {
+    if (m.status === 'completed') return;
+    const [p1, p2] = m.players;
+    if (p1 === -1 || p2 === -1) return;
+    const p1B = isByePlayer(p1), p2B = isByePlayer(p2);
+    if (state && (state.status === 'running' || state.status === 'setup')) {
+      if (p1B && p2B)    { m.winner = p1; m.status = 'completed'; }
+      else if (p1B)      { m.winner = p2; m.status = 'completed'; }
+      else if (p2B)      { m.winner = p1; m.status = 'completed'; }
+    }
+  });
+
   current.forEach((match, mIdx) => {
     const nextMatchIdx = Math.floor(mIdx / 2);
     const slot = mIdx % 2;
@@ -1329,6 +1345,19 @@ function propagateDoubleElim() {
   }));
   grandFinal.players = [-1, -1];
   if (grandFinal.status !== 'completed') { grandFinal.winner = null; grandFinal.status = 'pending'; }
+
+  // ---- Step 1b: Auto-complete byes in Winners Round 0 ----
+  winnersRounds[0].forEach(m => {
+    if (m.status === 'completed') return;
+    const [p1, p2] = m.players;
+    if (p1 === -1 || p2 === -1) return;
+    const p1B = isByePlayer(p1), p2B = isByePlayer(p2);
+    if (state && (state.status === 'running' || state.status === 'setup')) {
+      if (p1B && p2B) { m.winner = p1; m.status = 'completed'; }
+      else if (p1B)   { m.winner = p2; m.status = 'completed'; }
+      else if (p2B)   { m.winner = p1; m.status = 'completed'; }
+    }
+  });
 
   // ---- Step 2: Propagate within winners bracket ----
   for (let r = 0; r < winnersRounds.length - 1; r++) {
@@ -2859,6 +2888,10 @@ function setupEventListeners() {
     if (!state || state.players.length < 2) { showToast('Need at least 2 players to start!', 'error'); return; }
     generateBracket();
   });
+  document.getElementById('btn-generate-bracket-overlay')?.addEventListener('click', () => {
+    if (!state || state.players.length < 2) { showToast('Need at least 2 players to start!', 'error'); return; }
+    generateBracket();
+  });
   document.getElementById('btn-start').addEventListener('click', () => {
     if (!state || state.players.length < 2) { showToast('Need at least 2 players to start!', 'error'); return; }
     saveState();
@@ -3011,6 +3044,9 @@ function setupEventListeners() {
     unlockedIndices.forEach((origIdx, shuffleIdx) => {
       state.players[origIdx] = unlockedPlayers[shuffleIdx];
     });
+
+    // Remove the padded BYEs from state.players so they don't pollute the player list
+    state.players = state.players.filter(p => p.status !== 'bye' && p.name !== 'BYE');
 
     saveState(false);
     generateBracket();

@@ -2442,4 +2442,18 @@ select {
   z-index: 1000;
 }
 
+/* Floating Generate Bracket Overlay in the setup view */
+.bracket-generate-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.2rem;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+.bracket-generate-overlay.hidden {
+  display: none !important;
+}
+
 
