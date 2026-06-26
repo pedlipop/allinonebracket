@@ -845,6 +845,15 @@ function deleteTournamentCard(id) {
 function renderHostView() {
   if (!state) { switchView('tournament-hub-view'); renderTournamentHub(); return; }
 
+  // Clean up legacy BYEs in setup phase to ensure correct seeding order / bracket sizing
+  if (state.status === 'setup' && state.players) {
+    const origLength = state.players.length;
+    state.players = state.players.filter(p => p.status !== 'bye' && p.name !== 'BYE');
+    if (state.players.length !== origLength) {
+      saveState(false);
+    }
+  }
+
   updateStatusBadge();
   renderSidebarPlayers();
   renderProgressPanel();
@@ -1076,7 +1085,8 @@ function computeActualBracketSize() {
   if (!state) return 8;
   const cfg = state.bracketSizeConfig;
   if (!cfg || cfg === 'auto') {
-    const n = Math.max(2, (state.players || []).length);
+    const actualPlayers = (state.players || []).filter(p => p.status !== 'bye' && p.name !== 'BYE');
+    const n = Math.max(2, actualPlayers.length);
     let size = 2;
     while (size < n) size *= 2;
     return size;
@@ -3083,23 +3093,31 @@ function setupEventListeners() {
     if (deleteTargetIndex === null || !state) return;
     saveState();
     const isRunning = state.status === 'running' || state.status === 'paused';
+    
+    const isLocked = (state.lockedSeeds || []).includes(deleteTargetIndex + 1);
+    if (isLocked) {
+      showToast('Cannot delete a player in a locked seed slot.', 'warning');
+      document.getElementById('confirm-delete-modal').classList.add('hidden');
+      deleteTargetIndex = null;
+      return;
+    }
+
     if (isRunning) {
       state.players.splice(deleteTargetIndex, 1);
       state.bracket = null;
       state.status = 'setup';
       showToast('Player removed. Tournament reset to setup.', 'warning');
     } else {
-      // If seed is locked, prevent deletion
-      const isLocked = (state.lockedSeeds || []).includes(deleteTargetIndex + 1);
-      if (isLocked) {
-        showToast('Cannot delete a player in a locked seed slot.', 'warning');
-        document.getElementById('confirm-delete-modal').classList.add('hidden');
-        deleteTargetIndex = null;
-        return;
-      }
-      state.players[deleteTargetIndex] = { name: 'BYE', companyId: 'BYE', status: 'bye' };
-      showToast('Participant removed (replaced with BYE).', 'info');
+      state.players.splice(deleteTargetIndex, 1);
+      showToast('Participant removed.', 'info');
     }
+
+    if (state.lockedSeeds) {
+      state.lockedSeeds = state.lockedSeeds
+        .filter(s => s !== deleteTargetIndex + 1)
+        .map(s => s > deleteTargetIndex + 1 ? s - 1 : s);
+    }
+
     document.getElementById('confirm-delete-modal').classList.add('hidden');
     deleteTargetIndex = null;
     saveState(false);
