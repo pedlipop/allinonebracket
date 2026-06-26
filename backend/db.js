@@ -313,11 +313,18 @@ const executeJsonQuery = (text, params) => {
 
 export default {
   query: async (text, params) => {
+    const cleanText = (text || '').trim().toUpperCase();
+    const isTx = ['BEGIN', 'COMMIT', 'ROLLBACK', 'BEGIN TRANSACTION', 'COMMIT TRANSACTION', 'ROLLBACK TRANSACTION'].includes(cleanText);
+
     if (useJsonDb) {
       return executeJsonQuery(text, params);
     }
     // If Turso is active, prioritize it
     if (tursoClient) {
+      if (isTx) {
+        // Libsql client handles transactions differently (skip raw TX strings to avoid error)
+        return { rows: [] };
+      }
       try {
         // Map positional parameters $1, $2 to named object format {"$1": val1, "$2": val2} for SQLite
         const args = {};
@@ -347,6 +354,9 @@ export default {
     try {
       return await pgPool.query(text, params);
     } catch (err) {
+      if (isTx) {
+        return { rows: [] };
+      }
       console.error('PostgreSQL query failed. Falling back to local JSON database.', err);
       useJsonDb = true;
       return executeJsonQuery(text, params);

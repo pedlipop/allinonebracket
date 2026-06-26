@@ -35,9 +35,9 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
   --shadow-neon: 0 0 12px rgba(36, 107, 230, 0.25);
   
-  --border-radius-sm: 8px;
-  --border-radius-md: 12px;
-  --border-radius-lg: 20px;
+  --border-radius-sm: 0px;
+  --border-radius-md: 0px;
+  --border-radius-lg: 0px;
 }
 
 /* ==========================================================================
@@ -203,7 +203,7 @@ input[readonly] {
   font-size: 0.7rem;
   background: var(--danger);
   padding: 0.15rem 0.4rem;
-  border-radius: 4px;
+  border-radius: 0px;
   color: white;
   margin-left: 0.5rem;
   vertical-align: middle;
@@ -248,7 +248,7 @@ input[readonly] {
   color: var(--text-primary);
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--border-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -484,7 +484,7 @@ select {
   color: var(--accent-cyan);
   border: 1px solid rgba(0, 210, 255, 0.2);
   padding: 0.1rem 0.5rem;
-  border-radius: 12px;
+  border-radius: 0px;
   font-size: 0.75rem;
   margin-left: 0.35rem;
 }
@@ -593,7 +593,7 @@ select {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-color);
   padding: 0.4rem 0.6rem;
-  border-radius: 6px;
+  border-radius: var(--border-radius-sm);
   font-size: 0.85rem;
   transition: all 0.2s;
 }
@@ -756,7 +756,7 @@ select {
   color: var(--warning);
   border: 1px solid rgba(255, 165, 2, 0.2);
   padding: 0.25rem 0.6rem;
-  border-radius: 4px;
+  border-radius: 0px;
   font-size: 0.8rem;
   font-weight: 500;
   animation: pulse-warning 2s infinite;
@@ -807,7 +807,7 @@ select {
   color: var(--accent-cyan);
   font-size: 0.68rem;
   padding: 0.15rem 0.4rem;
-  border-radius: 4px;
+  border-radius: 0px;
   font-weight: 800;
   margin-right: 0.4rem;
   display: inline-block;
@@ -937,7 +937,7 @@ select {
   align-items: center;
   justify-content: space-between;
   padding: 0.45rem 0.5rem;
-  border-radius: 6px;
+  border-radius: 0px;
   background: rgba(255, 255, 255, 0.01);
   margin-bottom: 0.25rem;
   transition: all 0.2s;
@@ -984,7 +984,7 @@ select {
   color: var(--warning);
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 0px;
   text-align: center;
   transition: all 0.2s;
   cursor: pointer;
@@ -1061,7 +1061,7 @@ select {
   border: none;
   color: var(--text-primary);
   padding: 0.35rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 0px;
   width: 100%;
 }
 .table-input:focus {
@@ -1070,7 +1070,7 @@ select {
 
 .badge-status {
   padding: 0.2rem 0.5rem;
-  border-radius: 12px;
+  border-radius: 0px;
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -1609,7 +1609,7 @@ select {
   width: 48px; height: 48px;
   background: rgba(0, 210, 255, 0.08);
   border: 1px solid rgba(0, 210, 255, 0.2);
-  border-radius: 12px;
+  border-radius: 0px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   font-size: 1.3rem;
@@ -1864,7 +1864,7 @@ select {
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   padding: 0.4rem 0.8rem;
-  border-radius: 6px;
+  border-radius: 0px;
   font-size: 0.85rem;
   font-weight: 500;
   display: inline-flex;
@@ -2377,7 +2377,7 @@ select {
   border: none;
   color: var(--text-secondary);
   padding: 0.15rem 0.35rem;
-  border-radius: 4px;
+  border-radius: 0px;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: var(--font-secondary);
