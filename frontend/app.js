@@ -1140,9 +1140,11 @@ function buildSingleBracket(size, seeded) {
     const p2B = seeded[p2i]?.status === 'bye';
     const p1Orig = seeded[p1i].originalIndex;
     const p2Orig = seeded[p2i].originalIndex;
-    if (p1B && p2B) { winner = p1Orig; status = 'completed'; }
-    else if (p1B)   { winner = p2Orig; status = 'completed'; }
-    else if (p2B)   { winner = p1Orig; status = 'completed'; }
+    if (state && state.status === 'running') {
+      if (p1B && p2B) { winner = p1Orig; status = 'completed'; }
+      else if (p1B)   { winner = p2Orig; status = 'completed'; }
+      else if (p2B)   { winner = p1Orig; status = 'completed'; }
+    }
     r0.push({ id: `0-${i}`, players: [p1Orig, p2Orig], scores: [0,0], winner, status });
   }
   rounds.push(r0);
@@ -1188,9 +1190,11 @@ function buildDoubleBracket(size, seeded) {
     const p2B = seeded[p2i]?.status === 'bye';
     const p1Orig = seeded[p1i].originalIndex;
     const p2Orig = seeded[p2i].originalIndex;
-    if (p1B && p2B) { winner = p1Orig; status = 'completed'; }
-    else if (p1B)   { winner = p2Orig; status = 'completed'; }
-    else if (p2B)   { winner = p1Orig; status = 'completed'; }
+    if (state && state.status === 'running') {
+      if (p1B && p2B) { winner = p1Orig; status = 'completed'; }
+      else if (p1B)   { winner = p2Orig; status = 'completed'; }
+      else if (p2B)   { winner = p1Orig; status = 'completed'; }
+    }
     wr0.push({ id: `w0-${i}`, players: [p1Orig, p2Orig], scores: [0,0], winner, status });
   }
   winnersRounds.push(wr0);
@@ -1282,9 +1286,11 @@ function propagateWinnersRound(rIdx) {
     const [p1, p2] = m.players;
     if (p1 === -1 || p2 === -1) return;
     const p1B = isByePlayer(p1), p2B = isByePlayer(p2);
-    if (p1B && p2B)    { m.winner = p1; m.status = 'completed'; }
-    else if (p1B)      { m.winner = p2; m.status = 'completed'; }
-    else if (p2B)      { m.winner = p1; m.status = 'completed'; }
+    if (state && state.status === 'running') {
+      if (p1B && p2B)    { m.winner = p1; m.status = 'completed'; }
+      else if (p1B)      { m.winner = p2; m.status = 'completed'; }
+      else if (p2B)      { m.winner = p1; m.status = 'completed'; }
+    }
   });
 
   if (rIdx + 1 < state.bracket.rounds.length - 1) {
@@ -1321,9 +1327,11 @@ function propagateDoubleElim() {
       const [p1, p2] = m.players;
       if (p1 === -1 || p2 === -1) return;
       const p1B = isByePlayer(p1), p2B = isByePlayer(p2);
-      if (p1B && p2B) { m.winner = p1; m.status = 'completed'; }
-      else if (p1B)   { m.winner = p2; m.status = 'completed'; }
-      else if (p2B)   { m.winner = p1; m.status = 'completed'; }
+      if (state && state.status === 'running') {
+        if (p1B && p2B) { m.winner = p1; m.status = 'completed'; }
+        else if (p1B)   { m.winner = p2; m.status = 'completed'; }
+        else if (p2B)   { m.winner = p1; m.status = 'completed'; }
+      }
     });
   }
 
@@ -1371,9 +1379,11 @@ function propagateDoubleElim() {
       const [p1, p2] = m.players;
       if (p1 === -1 || p2 === -1) return;
       const p1B = isByePlayer(p1), p2B = isByePlayer(p2);
-      if (p1B && p2B) { m.winner = p1; m.status = 'completed'; }
-      else if (p1B)   { m.winner = p2; m.status = 'completed'; }
-      else if (p2B)   { m.winner = p1; m.status = 'completed'; }
+      if (state && state.status === 'running') {
+        if (p1B && p2B) { m.winner = p1; m.status = 'completed'; }
+        else if (p1B)   { m.winner = p2; m.status = 'completed'; }
+        else if (p2B)   { m.winner = p1; m.status = 'completed'; }
+      }
     });
 
     if (lrIdx === losersRounds.length - 1) {
@@ -1507,7 +1517,6 @@ function updateBracketViewClasses() {
   };
 
   updateButtons(bracketViewMode, bracketSingleActive);
-
   const hostWinnersSect = document.getElementById('winners-bracket-section');
   const hostLosersSect = document.getElementById('losers-bracket-section');
   const hostGfSect = document.getElementById('grand-final-container');
@@ -1559,26 +1568,77 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
     return;
   }
 
-  // Calculate bracket size for grid rows
-  // The first round has rounds[0].length * 2 slots.
-  const bracketSize = rounds[0].length * 2;
+  // Size constraints for dynamic absolute coordinate layout
+  const matchWidth = 260;
+  const matchHeight = 110;
+  const horizontalGap = 120; // column gap
+  const roundWidth = matchWidth + horizontalGap;
+  const initialVerticalGap = 40;
+  const headerHeight = 60;
+
+  // Calculate canvas dimensions dynamically
+  const numRounds = rounds.length;
+  const canvasWidth = numRounds * roundWidth + 100;
+
+  // Winners Bracket layout logic (recursive vertical centering)
+  // Store computed top coordinates in match objects for quick retrieval
+  rounds.forEach((round, rIdx) => {
+    round.forEach((match, mIdx) => {
+      let topVal;
+      if (rIdx === 0) {
+        // Round 0: spaced evenly
+        topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap);
+      } else {
+        // Subsequent rounds: center parent card between its two child cards
+        const child1Top = rounds[rIdx - 1][mIdx * 2]?.yCoord;
+        const child2Top = rounds[rIdx - 1][mIdx * 2 + 1]?.yCoord;
+        if (child1Top !== undefined && child2Top !== undefined) {
+          topVal = (child1Top + child2Top) / 2;
+        } else if (child1Top !== undefined) {
+          topVal = child1Top;
+        } else {
+          topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * Math.pow(2, rIdx));
+        }
+      }
+      match.yCoord = topVal;
+      match.xCoord = rIdx * roundWidth;
+    });
+  });
+
+  // Determine maximum height to scale canvas container bounds
+  let maxContentHeight = 600;
+  rounds[0].forEach((match) => {
+    const bottom = match.yCoord + matchHeight + 100;
+    if (bottom > maxContentHeight) maxContentHeight = bottom;
+  });
+
+  canvas.style.width = `${canvasWidth}px`;
+  canvas.style.height = `${maxContentHeight}px`;
 
   // SVG overlay for connector lines (placed first so nodes render on top)
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('class', 'connector-svg');
   svg.id = `svg-${prefix}-${canvasId}`;
+  svg.setAttribute('width', canvasWidth);
+  svg.setAttribute('height', maxContentHeight);
   canvas.appendChild(svg);
 
-  // Render round columns
+  // Render rounds and match nodes
   rounds.forEach((round, rIdx) => {
     const col = document.createElement('div');
     col.className = 'round-column';
-    col.style.gridTemplateRows = `repeat(${bracketSize}, 1fr)`;
+    col.style.position = 'absolute';
+    col.style.left = `${rIdx * roundWidth}px`;
+    col.style.top = '0px';
+    col.style.width = `${matchWidth}px`;
+    col.style.height = '100%';
 
     const header = document.createElement('div');
     header.className = 'round-title-header';
-    header.style.gridRow = `1 / span ${bracketSize}`;
-    header.style.alignSelf = 'start';
+    header.style.position = 'absolute';
+    header.style.top = '10px';
+    header.style.width = '100%';
+    header.style.margin = '0';
     const isFinal = rIdx === rounds.length - 1;
     if (prefix === 'w') {
       header.textContent = isFinal
@@ -1596,24 +1656,11 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
       const node = document.createElement('div');
       node.className = `match-node ${match.status}`;
       node.id = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
-
-      // Apply grid-row positioning
-      let gridRowSpan, gridRowStart;
-      if (prefix === 'w') {
-        const factor = Math.pow(2, rIdx);
-        gridRowSpan = factor * 2;
-        gridRowStart = factor * (2 * mIdx + 1);
-      } else {
-        const factor = Math.pow(2, Math.floor(rIdx / 2) + 1);
-        gridRowSpan = factor;
-        gridRowStart = factor * mIdx + (factor / 2) + 1;
-        // Adjust for losers final round which has 1 match of span 2*factor or centered
-        if (isFinal) {
-          gridRowSpan = bracketSize;
-          gridRowStart = 1;
-        }
-      }
-      node.style.gridRow = `${gridRowStart} / span ${gridRowSpan}`;
+      node.style.position = 'absolute';
+      node.style.top = `${match.yCoord}px`;
+      node.style.left = '0px';
+      node.style.width = `${matchWidth}px`;
+      node.style.height = `${matchHeight}px`;
 
       let hdrHtml = match.isThirdPlace ? getTranslation('third_place_match') : t('match_num', { num: mIdx + 1 });
       let hdrCls = '';
@@ -1625,13 +1672,12 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
       const clickStr = clickable ? `onclick="handleMatchClick('${prefix}','${canvasId}',${rIdx},${mIdx})"` : '';
 
       // Bye filler for setup (both brackets)
-      const showByeFill = !isLive && state.status === 'running' && match.status !== 'completed';
+      const showByeFill = !isLive && (state.status === 'running' || state.status === 'setup') && match.status !== 'completed';
       const p1IsBye = (match.players[0] === -2 || (match.players[0] >= (state.players?.length || 0) && match.players[0] >= 0));
       const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
 
       // Calculate Seed Numbers for Winners Round 0 matches in setup mode
-      const size = bracketSize;
-      const seedingOrder = getSeedingOrder(size);
+      const seedingOrder = getSeedingOrder(rounds[0].length * 2);
       const seed1 = seedingOrder[mIdx * 2];
       const seed2 = seedingOrder[mIdx * 2 + 1];
 
@@ -1692,41 +1738,6 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
 }
 
 // ==========================================================================
-// GRAND FINAL RENDERER
-// ==========================================================================
-function renderGrandFinal(containerId, isLive) {
-  const container = document.getElementById(containerId);
-  if (!container || !state?.bracket?.grandFinal) { if (container) container.classList.add('hidden'); return; }
-
-  const gf = state.bracket.grandFinal;
-  const p1 = getPlayerInfo(gf.players[0]);
-  const p2 = getPlayerInfo(gf.players[1]);
-  const p1W = gf.winner === gf.players[0] && gf.status === 'completed';
-  const p2W = gf.winner === gf.players[1] && gf.status === 'completed';
-  const clickable = !isLive && state.status === 'running';
-  const clickStr = clickable ? `onclick="handleMatchClick('gf','gf-canvas',0,0)"` : '';
-
-  container.innerHTML = `
-    <div class="bracket-section-label grand-final-label"><i class="fa-solid fa-crown"></i> ${getTranslation('grand_final')}</div>
-    <div class="grand-final-wrap">
-      <div class="match-node grand-final-node ${gf.status}" id="mn-gf-gf-canvas-0-0" ${clickStr}>
-        <div class="match-node-header ${gf.status === 'in-progress' ? 'active-tag' : ''}">
-          ${gf.status === 'in-progress' ? `<i class="fa-solid fa-gamepad"></i> ${getTranslation('playing')}` : `<i class="fa-solid fa-crown"></i> ${getTranslation('grand_final')}`}
-        </div>
-        <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls}" ${clickStr}>
-          <span class="team-name">${escapeHTML(p1.name)}</span>
-          <span class="team-score gf-badge">${p1W ? getTranslation('champion') : ''}</span>
-        </div>
-        <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls}" ${clickStr}>
-          <span class="team-name">${escapeHTML(p2.name)}</span>
-          <span class="team-score gf-badge">${p2W ? getTranslation('champion') : ''}</span>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// ==========================================================================
 // SVG CONNECTOR LINES — FIXED: use canvas-local offsetLeft/offsetTop
 // ==========================================================================
 function drawConnectors(canvas, svgId, rounds, prefix, canvasId) {
@@ -1734,9 +1745,8 @@ function drawConnectors(canvas, svgId, rounds, prefix, canvasId) {
   if (!svg || !rounds) return;
 
   svg.innerHTML = '';
-  // Size SVG to match full canvas content
-  svg.setAttribute('width', Math.max(canvas.scrollWidth, 2000));
-  svg.setAttribute('height', Math.max(canvas.scrollHeight, 1000));
+  const matchWidth = 260;
+  const matchHeight = 110;
 
   rounds.forEach((round, rIdx) => {
     if (rIdx >= rounds.length - 1) return; // No connector from last round
@@ -2678,6 +2688,28 @@ function setupEventListeners() {
       generateBracket();
     }
     state.status = 'running';
+    
+    // Auto-advance byes when starting the tournament
+    if (state.bracket.type === 'double') {
+      state.bracket.winnersRounds[0].forEach(m => {
+        const [p1, p2] = m.players;
+        const p1B = isByePlayer(p1), p2B = isByePlayer(p2);
+        if (p1B && p2B) { m.winner = p1; m.status = 'completed'; }
+        else if (p1B)   { m.winner = p2; m.status = 'completed'; }
+        else if (p2B)   { m.winner = p1; m.status = 'completed'; }
+      });
+      propagateDoubleElim();
+    } else {
+      state.bracket.rounds[0].forEach(m => {
+        const [p1, p2] = m.players;
+        const p1B = isByePlayer(p1), p2B = isByePlayer(p2);
+        if (p1B && p2B) { m.winner = p1; m.status = 'completed'; }
+        else if (p1B)   { m.winner = p2; m.status = 'completed'; }
+        else if (p2B)   { m.winner = p1; m.status = 'completed'; }
+      });
+      propagateSingleAll();
+    }
+    
     saveState(false);
     renderHostView();
   });
@@ -3476,17 +3508,73 @@ function renderUnifiedDoubleBracket(canvasId, isLive) {
 function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
   if (!rounds || !rounds.length) return;
 
-  const bracketSize = rounds[0].length * 2;
+  const matchWidth = 260;
+  const matchHeight = 110;
+  const horizontalGap = 120;
+  const roundWidth = matchWidth + horizontalGap;
+  const initialVerticalGap = 40;
+  const headerHeight = 60;
+
+  // Calculate top/left absolute coordinates recursively
+  rounds.forEach((round, rIdx) => {
+    round.forEach((match, mIdx) => {
+      let topVal;
+      if (prefix === 'w') {
+        // Winners Bracket
+        if (rIdx === 0) {
+          topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap);
+        } else {
+          const child1Top = rounds[rIdx - 1][mIdx * 2]?.yCoord;
+          const child2Top = rounds[rIdx - 1][mIdx * 2 + 1]?.yCoord;
+          if (child1Top !== undefined && child2Top !== undefined) {
+            topVal = (child1Top + child2Top) / 2;
+          } else if (child1Top !== undefined) {
+            topVal = child1Top;
+          } else {
+            topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * Math.pow(2, rIdx));
+          }
+        }
+      } else {
+        // Losers Bracket
+        if (rIdx === 0) {
+          // Space LR0 matches wider (same spacing as Winners Round 1 since it has half the matches of WR0)
+          topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * 2.5 + matchHeight / 2);
+        } else if (rIdx % 2 === 1) {
+          // External Round: same number of matches as previous losers round. Align directly.
+          topVal = rounds[rIdx - 1][mIdx]?.yCoord;
+        } else {
+          // Internal Round: half the number of matches as previous losers round. Center between them.
+          const child1Top = rounds[rIdx - 1][mIdx * 2]?.yCoord;
+          const child2Top = rounds[rIdx - 1][mIdx * 2 + 1]?.yCoord;
+          if (child1Top !== undefined && child2Top !== undefined) {
+            topVal = (child1Top + child2Top) / 2;
+          } else if (child1Top !== undefined) {
+            topVal = child1Top;
+          } else {
+            topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * Math.pow(2, Math.floor(rIdx / 2) + 1));
+          }
+        }
+      }
+      match.yCoord = topVal;
+      match.xCoord = rIdx * roundWidth;
+    });
+  });
 
   rounds.forEach((round, rIdx) => {
     const col = document.createElement('div');
     col.className = 'round-column';
-    col.style.gridTemplateRows = `repeat(${bracketSize}, 1fr)`;
+    col.style.position = 'absolute';
+    col.style.left = `${rIdx * roundWidth}px`;
+    col.style.top = '0px';
+    col.style.width = `${matchWidth}px`;
+    col.style.height = '100%';
 
     const header = document.createElement('div');
     header.className = 'round-title-header';
-    header.style.gridRow = `1 / span ${bracketSize}`;
-    header.style.alignSelf = 'start';
+    header.style.position = 'absolute';
+    header.style.top = '10px';
+    header.style.width = '100%';
+    header.style.margin = '0';
     const isFinal = rIdx === rounds.length - 1;
     if (prefix === 'w') {
       header.textContent = isFinal
@@ -3504,24 +3592,11 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
       const node = document.createElement('div');
       node.className = `match-node ${match.status}`;
       node.id = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
-
-      // Apply grid-row positioning
-      let gridRowSpan, gridRowStart;
-      if (prefix === 'w') {
-        const factor = Math.pow(2, rIdx);
-        gridRowSpan = factor * 2;
-        gridRowStart = factor * (2 * mIdx + 1);
-      } else {
-        const factor = Math.pow(2, Math.floor(rIdx / 2) + 1);
-        gridRowSpan = factor;
-        gridRowStart = factor * mIdx + (factor / 2) + 1;
-        // Adjust for losers final round which has 1 match of span 2*factor or centered
-        if (isFinal) {
-          gridRowSpan = bracketSize;
-          gridRowStart = 1;
-        }
-      }
-      node.style.gridRow = `${gridRowStart} / span ${gridRowSpan}`;
+      node.style.position = 'absolute';
+      node.style.top = `${match.yCoord}px`;
+      node.style.left = '0px';
+      node.style.width = `${matchWidth}px`;
+      node.style.height = `${matchHeight}px`;
 
       let hdrHtml = match.isThirdPlace ? getTranslation('third_place_match') : t('match_num', {num: mIdx + 1});
       let hdrCls = '';
@@ -3532,13 +3607,12 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
       const clickable = !isLive && state.status === 'running';
       const clickStr = clickable ? `onclick="handleMatchClick('${prefix}','${canvasId}',${rIdx},${mIdx})"` : '';
 
-      const showByeFill = !isLive && state.status === 'running' && match.status !== 'completed';
+      const showByeFill = !isLive && (state.status === 'running' || state.status === 'setup') && match.status !== 'completed';
       const p1IsBye = (match.players[0] === -2 || (match.players[0] >= (state.players?.length || 0) && match.players[0] >= 0));
       const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
 
       // Calculate Seed Numbers for Winners Round 0 matches in setup mode
-      const size = bracketSize;
-      const seedingOrder = getSeedingOrder(size);
+      const seedingOrder = getSeedingOrder(rounds[0].length * 2);
       const seed1 = seedingOrder[mIdx * 2];
       const seed2 = seedingOrder[mIdx * 2 + 1];
 
@@ -3553,7 +3627,6 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
       let p2RowSuffix = '';
 
       if (!isLive && prefix === 'w' && rIdx === 0) {
-        // Show Seed Badge and Lock/Unlock Icon
         const lockIcon1 = isSeedLocked1 ? 'fa-lock' : 'fa-lock-open';
         const lockIcon2 = isSeedLocked2 ? 'fa-lock' : 'fa-lock-open';
         const lockClass1 = isSeedLocked1 ? 'locked' : '';
@@ -3593,6 +3666,14 @@ function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
 
     container.appendChild(col);
   });
+
+  // Calculate and set the container's height dynamically based on the round matches bounds
+  let maxContentHeight = 600;
+  rounds[0].forEach((match) => {
+    const bottom = match.yCoord + matchHeight + 100;
+    if (bottom > maxContentHeight) maxContentHeight = bottom;
+  });
+  container.style.height = `${maxContentHeight}px`;
 }
 
 function renderGrandFinalInto(container, canvasId, isLive) {
@@ -3601,9 +3682,16 @@ function renderGrandFinalInto(container, canvasId, isLive) {
 
   const col = document.createElement('div');
   col.className = 'round-column';
+  col.style.position = 'relative';
+  col.style.width = '260px';
+  col.style.height = '100%';
 
   const header = document.createElement('div');
   header.className = 'round-title-header';
+  header.style.position = 'absolute';
+  header.style.top = '10px';
+  header.style.width = '100%';
+  header.style.margin = '0';
   header.textContent = getTranslation('grand_final');
   col.appendChild(header);
 
@@ -3613,6 +3701,11 @@ function renderGrandFinalInto(container, canvasId, isLive) {
   const node = document.createElement('div');
   node.className = `match-node ${gf.status}`;
   node.id = `mn-gf-${canvasId}-0-0`;
+  node.style.position = 'absolute';
+  node.style.top = '160px';
+  node.style.left = '0px';
+  node.style.width = '260px';
+  node.style.height = '90px';
 
   let hdrHtml = getTranslation('grand_final');
   let hdrCls = '';
@@ -3640,7 +3733,11 @@ function renderGrandFinalInto(container, canvasId, isLive) {
 
     nodeReset.className = `match-node ${gfReset.status}`;
     nodeReset.id = `mn-gfr-${canvasId}-0-0`;
-    nodeReset.style.marginTop = '1.5rem';
+    nodeReset.style.position = 'absolute';
+    nodeReset.style.top = '280px';
+    nodeReset.style.left = '0px';
+    nodeReset.style.width = '260px';
+    nodeReset.style.height = '90px';
 
     const pr1 = getPlayerInfo(gfReset.players[0]);
     const pr2 = getPlayerInfo(gfReset.players[1]);
@@ -3667,8 +3764,12 @@ function drawUnifiedConnectors(canvas, svgId, canvasId) {
   if (!svg || !state?.bracket) return;
 
   svg.innerHTML = '';
-  svg.setAttribute('width', Math.max(canvas.scrollWidth, 2000));
-  svg.setAttribute('height', Math.max(canvas.scrollHeight, 1000));
+  
+  // Set dimensions dynamically based on parent scroll dimensions
+  const scrollW = Math.max(canvas.scrollWidth, 2400);
+  const scrollH = Math.max(canvas.scrollHeight, 1200);
+  svg.setAttribute('width', scrollW);
+  svg.setAttribute('height', scrollH);
 
   // 1. Winners Bracket connectors
   drawConnectorGroup(svg, canvas, 'w', canvasId, state.bracket.winnersRounds);
@@ -3692,4 +3793,54 @@ function drawUnifiedConnectors(canvas, svgId, canvasId) {
   if (document.getElementById(gfrId)) {
     drawSingleConnectorLine(svg, canvas, gfId, gfrId);
   }
+}
+
+function drawConnectorGroup(svg, canvas, prefix, canvasId, rounds) {
+  const matchWidth = 260;
+  const matchHeight = 110;
+  rounds.forEach((round, rIdx) => {
+    if (rIdx >= rounds.length - 1) return;
+    round.forEach((match, mIdx) => {
+      let nextMi;
+      if (prefix === 'l') {
+        const isNextInternal = (rIdx + 1) >= 2 && (rIdx + 1) % 2 === 0;
+        nextMi = isNextInternal ? Math.floor(mIdx / 2) : mIdx;
+      } else {
+        nextMi = Math.floor(mIdx / 2);
+      }
+      const nextMatch = rounds[rIdx + 1][nextMi];
+      if (!nextMatch) return;
+
+      const x1 = match.xCoord + matchWidth;
+      const y1 = match.yCoord + matchHeight / 2;
+      const x2 = nextMatch.xCoord;
+      const y2 = nextMatch.yCoord + matchHeight / 2;
+      const midX = (x1 + x2) / 2;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`);
+      path.setAttribute('class', `connector-line ${match.status === 'in-progress' ? 'active' : ''} ${match.status === 'completed' ? 'done' : ''}`);
+      svg.appendChild(path);
+    });
+  });
+}
+
+function drawSingleConnectorLine(svg, canvas, startId, endId) {
+  const startNode = document.getElementById(startId);
+  const endNode = document.getElementById(endId);
+  if (!startNode || !endNode) return;
+
+  const s = getOffsetRelativeTo(startNode, canvas);
+  const e = getOffsetRelativeTo(endNode, canvas);
+
+  const x1 = s.left + startNode.offsetWidth;
+  const y1 = s.top + startNode.offsetHeight / 2;
+  const x2 = e.left;
+  const y2 = e.top + endNode.offsetHeight / 2;
+  const midX = (x1 + x2) / 2;
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`);
+  path.setAttribute('class', 'connector-line');
+  svg.appendChild(path);
 }

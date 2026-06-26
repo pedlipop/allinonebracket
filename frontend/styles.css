@@ -779,10 +779,10 @@ select {
 
 /* Bracket Round & Match Styling */
 .round-column {
-  display: grid;
+  position: relative;
   height: 100%;
-  min-width: 250px;
-  align-items: center;
+  width: 260px;
+  min-width: 260px;
 }
 
 /* Seeding and lock button styling */
@@ -855,31 +855,17 @@ select {
   border-radius: var(--border-radius-md);
   padding: 0.5rem;
   width: 260px;
-  position: relative;
+  position: absolute;
   box-shadow: var(--shadow-sm);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.3s, box-shadow 0.3s;
   user-select: none;
 }
 .match-node:hover {
-  transform: translateY(-2px);
   border-color: rgba(255, 255, 255, 0.2);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* Match node connector lines (horizontal & vertical) */
-.match-node::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -3rem;
-  width: 3rem;
-  height: 2px;
-  background-color: var(--border-color);
-  z-index: 1;
-}
-.round-column:last-child .match-node::after {
-  display: none;
-}
+
 
 /* In progress animation */
 .match-node.in-progress {
