@@ -1005,10 +1005,10 @@ select {
   font-size: 0.9rem;
 }
 .participants-table th {
-  background: rgba(10, 11, 16, 0.6);
+  background: var(--bg-input);
   padding: 1rem;
-  color: var(--text-secondary);
-  font-weight: 600;
+  color: var(--text-primary);
+  font-weight: 700;
   border-bottom: 1px solid var(--border-color);
 }
 .participants-table td {
@@ -1017,21 +1017,20 @@ select {
   color: var(--text-primary);
 }
 .participants-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.01);
 }
 
 /* Edit in table inputs */
 .table-input {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--border-color);
+  background: transparent;
+  border: none;
   color: var(--text-primary);
   padding: 0.35rem 0.5rem;
   border-radius: 4px;
   width: 100%;
 }
 .table-input:focus {
-  border-color: var(--accent-cyan);
-  background: var(--bg-input);
+  outline: none;
 }
 
 .badge-status {

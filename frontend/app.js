@@ -2387,8 +2387,8 @@ function renderParticipantsTable() {
 
     tr.innerHTML = `
       <td>${realIdx + 1}</td>
-      <td><input type="text" class="table-input" value="${escapeHTML(p.name)}" onchange="updatePlayerFromTable(${realIdx},'name',this.value)"></td>
-      <td><input type="text" class="table-input" value="${escapeHTML(p.companyId)}" onchange="updatePlayerFromTable(${realIdx},'companyId',this.value)"></td>
+      <td><input type="text" class="table-input" value="${escapeHTML(p.name)}" readonly></td>
+      <td><input type="text" class="table-input" value="${escapeHTML(p.companyId)}" readonly></td>
       <td><span class="badge-status ${pStatus}">${pStatus.toUpperCase()}</span></td>
       <td>
         <div style="display:flex;gap:0.35rem;align-items:center">
