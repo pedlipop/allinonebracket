@@ -1829,7 +1829,6 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
       col.appendChild(node);
     });
   });
-  });
 
   // Draw connectors after layout paint
   setTimeout(() => drawConnectors(canvas, `svg-${prefix}-${canvasId}`, rounds, prefix, canvasId), 80);
