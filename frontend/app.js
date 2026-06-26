@@ -1805,7 +1805,8 @@ function setupZoomPan(containerId, canvasId) {
   function applyTf() { applyTransform(canvasId); }
 
   container.addEventListener('mousedown', (e) => {
-    if (e.target.closest('button, input, .team-row')) return;
+    if (e.target.closest('button, input, .team-row, .btn-lock-seed')) return;
+    e.preventDefault();
     isDragging = true; container.style.cursor = 'grabbing';
     startDragX = e.clientX - panX; startDragY = e.clientY - panY;
   });
@@ -1853,6 +1854,43 @@ function centerBracketView(canvasId, containerId) {
   
   let contentWidth = canvas.scrollWidth;
   let contentHeight = canvas.scrollHeight;
+
+  // Calculate actual content width and height based on the positions of the matches
+  if (state && state.bracket) {
+    const matchWidth = 260;
+    const matchHeight = 110;
+    const horizontalGap = 120;
+    const roundWidth = matchWidth + horizontalGap;
+
+    let maxW = 400;
+    let maxH = 600;
+
+    const checkRounds = (rounds) => {
+      if (!rounds) return;
+      rounds.forEach((round, rIdx) => {
+        round.forEach(match => {
+          const right = rIdx * roundWidth + matchWidth + 100;
+          const bottom = (match.yCoord || 0) + matchHeight + 100;
+          if (right > maxW) maxW = right;
+          if (bottom > maxH) maxH = bottom;
+        });
+      });
+    };
+
+    if (state.bracket.type === 'double') {
+      checkRounds(state.bracket.winnersRounds);
+      checkRounds(state.bracket.losersRounds);
+      if (state.bracket.grandFinal) {
+        const right = (state.bracket.winnersRounds?.length || 0) * roundWidth + matchWidth + 300;
+        if (right > maxW) maxW = right;
+      }
+    } else {
+      checkRounds(state.bracket.rounds);
+    }
+
+    contentWidth = maxW;
+    contentHeight = maxH;
+  }
 
   canvas.style.transform = originalTransform;
 
