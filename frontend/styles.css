@@ -1392,7 +1392,7 @@ select {
 .legend-live-dot {
   width: 8px;
   height: 8px;
-  background-color: var(--success);
+  background-color: var(--danger);
   border-radius: 50%;
   animation: blink-live 1.5s infinite;
 }
