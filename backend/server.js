@@ -102,7 +102,7 @@ wss.on('connection', (ws, req) => {
           console.warn(`Unauthorized state update attempt on tournament ${tId} (Action: ${data.action})`);
           return;
         }
-        
+
         // 1. Broadcast update to other viewers immediately (excluding sender ws)
         broadcastToTournament(tId, {
           type: 'TOURNAMENT_UPDATE',
@@ -158,7 +158,7 @@ const broadcastToTournament = (tournamentId, message, senderWs = null) => {
 const saveStateToDb = async (id, data) => {
   const { name, participants, matches, status, action, details, stateSnapshot } = data;
   console.log('Saving tournament state', { id, action });
-  
+
   await db.query('BEGIN');
   try {
     // Save tournament
@@ -185,15 +185,15 @@ const saveStateToDb = async (id, data) => {
           is_locked, p1_source_match_id, p2_source_match_id, dest_match_id, dest_param, side, is_third_place
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
         [
-          m.id, id, m.round, m.index, 
-          m.p1?.id || null, m.p2?.id || null, 
-          m.score1, m.score2, m.winner?.id || null, 
-          m.isLocked || m.is_locked || false, 
-          m.p1SourceMatchId || m.p1_source_match_id || null, 
-          m.p2SourceMatchId || m.p2_source_match_id || null, 
-          m.destMatchId || m.dest_match_id || null, 
-          m.destParam || m.dest_param || null, 
-          m.side || null, 
+          m.id, id, m.round, m.index,
+          m.p1?.id || null, m.p2?.id || null,
+          m.score1, m.score2, m.winner?.id || null,
+          m.isLocked || m.is_locked || false,
+          m.p1SourceMatchId || m.p1_source_match_id || null,
+          m.p2SourceMatchId || m.p2_source_match_id || null,
+          m.destMatchId || m.dest_match_id || null,
+          m.destParam || m.dest_param || null,
+          m.side || null,
           m.isThirdPlace || m.is_third_place || false
         ]
       );
@@ -441,7 +441,7 @@ app.post('/api/tournament/:id/save', async (req, res) => {
   const { id } = req.params;
   try {
     const isAdmin = req.query.admin === 'true' || req.body.admin === 'true';
-    
+
     let isDraft = true;
     try {
       const currentTour = await db.query('SELECT status FROM tournaments WHERE id = $1', [id]);
@@ -462,10 +462,10 @@ app.post('/api/tournament/:id/save', async (req, res) => {
     broadcastToTournament(id, {
       type: 'TOURNAMENT_UPDATE',
       tournamentId: id,
-      data: { 
-        participants: req.body.participants, 
-        matches: req.body.matches, 
-        status: req.body.status 
+      data: {
+        participants: req.body.participants,
+        matches: req.body.matches,
+        status: req.body.status
       }
     });
 
@@ -495,7 +495,7 @@ app.post('/api/tournament/:id/register', async (req, res) => {
       return res.status(500).json({ error: "Tournament state is empty" });
     }
     const stateObj = JSON.parse(stateStr);
-    
+
     if (stateObj.status !== 'registration') {
       return res.status(403).json({ error: 'Registration is closed.' });
     }

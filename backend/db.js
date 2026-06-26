@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import pg from 'pg';
 import { createClient } from '@libsql/client';
 import fs from 'fs';

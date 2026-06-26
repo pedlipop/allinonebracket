@@ -16,6 +16,7 @@ let redoStack = [];
 let timerInterval = null;
 let activeSelectedMatch = null; // { bracket: 'w'|'l'|'gf', roundIndex, matchIndex }
 let editTargetPlayerIndex = null;
+let activeByeSlot = null; // { prefix, canvasId, rIdx, mIdx, slot }
 let bracketViewMode = 'double';     // 'single' or 'double'
 let bracketSingleActive = 'winners'; // 'winners' or 'losers'
 let participantsCurrentPage = 1;
@@ -26,6 +27,22 @@ let panX = 40;
 let panY = 50;
 let isDragging = false;
 let startDragX = 0, startDragY = 0;
+
+const canvasStates = {};
+function getCanvasState(canvasId) {
+  if (!canvasId) return { zoomScale, panX, panY, isDragging, startDragX, startDragY };
+  if (!canvasStates[canvasId]) {
+    canvasStates[canvasId] = {
+      zoomScale: 0.75,
+      panX: 40,
+      panY: 50,
+      isDragging: false,
+      startDragX: 0,
+      startDragY: 0
+    };
+  }
+  return canvasStates[canvasId];
+}
 
 // WebSocket connection
 let socket = null;
@@ -229,6 +246,7 @@ async function routeApp() {
     switchView('player-live-view');
     renderLiveView();
     setupZoomPan('live-bracket-canvas-container', 'live-bracket-canvas');
+    setupZoomPan('live-losers-bracket-canvas-container', 'live-losers-bracket-canvas');
   } else if (params.has('register')) {
     // PUBLIC: Registration view — no login needed
     const tid = params.get('tid') || appData.currentId;
@@ -252,6 +270,7 @@ async function routeApp() {
       switchView('host-view');
       renderHostView();
       setupZoomPan('bracket-canvas-container', 'bracket-canvas');
+      setupZoomPan('losers-bracket-canvas-container', 'losers-bracket-canvas');
     } else {
       switchView('tournament-hub-view');
       await loadAppData();
@@ -538,9 +557,18 @@ function renderSidebarPlayers() {
     
     let seedingControls = '';
     if (state.status === 'setup') {
+      row.setAttribute('draggable', 'true');
       row.dataset.index = origIdx;
+      row.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', origIdx);
+        row.classList.add('dragging');
+      });
+      row.addEventListener('dragend', () => {
+        row.classList.remove('dragging');
+      });
+
       seedingControls = `
-        <div class="drag-handle" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></div>
+        <div class="drag-handle" title="Drag to reorder/seed"><i class="fa-solid fa-grip-vertical"></i></div>
         <div class="seeding-controls" style="display:flex;flex-direction:column;gap:2px;margin-right:8px">
           <button class="btn-seeding" onclick="movePlayerSeeding(${origIdx}, -1)" ${origIdx === 0 ? 'disabled' : ''} title="Move Up"><i class="fa-solid fa-chevron-up"></i></button>
           <button class="btn-seeding" onclick="movePlayerSeeding(${origIdx}, 1)" ${origIdx === state.players.length - 1 ? 'disabled' : ''} title="Move Down"><i class="fa-solid fa-chevron-down"></i></button>
@@ -666,9 +694,19 @@ function generateBracket() {
     playersList.push({ name: 'BYE', companyId: 'BYE', status: 'bye', originalIndex: playersList.length });
   }
 
-  // Seeding distribution: Map players list to standard seeding order positions
-  const seedingOrder = getSeedingOrder(size);
-  const seeded = seedingOrder.map(seedNum => playersList[seedNum - 1]);
+  // Seed players list
+  let seeded;
+  if (state.manualSeeds && state.manualSeeds.length === size) {
+    seeded = state.manualSeeds.map(idx => {
+      if (idx === -3 || idx === undefined || idx === null) {
+        return { name: 'BYE', companyId: 'BYE', status: 'bye', originalIndex: -2 };
+      }
+      return playersList[idx] || { name: 'BYE', companyId: 'BYE', status: 'bye', originalIndex: -2 };
+    });
+  } else {
+    const seedingOrder = getSeedingOrder(size);
+    seeded = seedingOrder.map(seedNum => playersList[seedNum - 1]);
+  }
 
   if (state.bracketType === 'double' && size >= 4) {
     state.bracket = buildDoubleBracket(size, seeded);
@@ -977,6 +1015,7 @@ function isByePlayer(idx) {
 
 function getPlayerInfo(idx) {
   if (idx === -1) return { name: 'TBD', companyId: '-', cls: 'tbd' };
+  if (idx === -3) return { name: '[Drop Player Here]', companyId: 'Empty Seed', cls: 'unseeded-placeholder' };
   if (isByePlayer(idx)) return { name: 'BYE', companyId: 'BYE', cls: 'bye' };
   const p = state.players[idx];
   if (p) return { name: p.name, companyId: p.companyId, cls: p.status || 'active' };
@@ -1002,7 +1041,7 @@ function renderBracketView(context) {
   const gfCont  = document.getElementById(gfContId);
   const lSect   = lSectId ? document.getElementById(lSectId) : null;
 
-  if (!state || !state.bracket) {
+  if (!state || (!state.bracket && state.status !== 'setup')) {
     renderBracketCanvas(wCanvasId, null, 'w', isLive);
     if (wLabel) wLabel.classList.add('hidden');
     if (lLabel) lLabel.classList.add('hidden');
@@ -1012,22 +1051,27 @@ function renderBracketView(context) {
     return;
   }
 
-  const isDouble = state.bracket.type === 'double';
+  let bracketToRender = state.bracket;
+  if (!bracketToRender && state.status === 'setup') {
+    bracketToRender = getSkeletonBracket();
+  }
+
+  const isDouble = bracketToRender.type === 'double';
 
   // Winners label: only show for double elim
   if (wLabel) wLabel.classList.toggle('hidden', !isDouble);
 
   if (isDouble) {
-    renderBracketCanvas(wCanvasId, state.bracket.winnersRounds, 'w', isLive);
+    renderBracketCanvas(wCanvasId, bracketToRender.winnersRounds, 'w', isLive);
 
     if (lLabel) lLabel.classList.remove('hidden');
     if (lCont)  lCont.classList.remove('hidden');
     if (lSect)  lSect.classList.remove('hidden');
-    renderBracketCanvas(lCanvasId, state.bracket.losersRounds, 'l', isLive);
+    renderBracketCanvas(lCanvasId, bracketToRender.losersRounds, 'l', isLive);
 
-    if (gfCont) { gfCont.classList.remove('hidden'); renderGrandFinal(gfContId, isLive); }
+    if (gfCont) { gfCont.classList.remove('hidden'); renderGrandFinal(gfContId, isLive, bracketToRender); }
   } else {
-    renderBracketCanvas(wCanvasId, state.bracket.rounds, 'w', isLive);
+    renderBracketCanvas(wCanvasId, bracketToRender.rounds, 'w', isLive);
     if (lLabel) lLabel.classList.add('hidden');
     if (lCont)  lCont.classList.add('hidden');
     if (lSect)  lSect.classList.add('hidden');
@@ -1037,7 +1081,8 @@ function renderBracketView(context) {
 }
 
 function updateBracketViewClasses() {
-  const isDouble = state && state.bracket && state.bracket.type === 'double';
+  const isDouble = state && (state.bracketType === 'double' || (state.bracket && state.bracket.type === 'double'));
+
   
   const hostToggleCont = document.getElementById('bracket-view-toggle-container');
   const hostSubToggleCont = document.getElementById('bracket-sub-toggle-container');
@@ -1102,6 +1147,304 @@ function updateBracketViewClasses() {
 
 
 // ==========================================================================
+// DRAG AND DROP / SKELETON HELPERS
+// ==========================================================================
+
+function hasBye(match) {
+  if (!match || !match.players) return false;
+  return match.players.some(p => p === -2 || (state && p >= state.players.length && p >= 0));
+}
+
+function getSkeletonBracket() {
+  const size = computeActualBracketSize();
+  const numRounds = Math.log2(size);
+  
+  if (!state.manualSeeds || state.manualSeeds.length !== size) {
+    state.manualSeeds = Array(size).fill(-3);
+    state.players.forEach((p, idx) => {
+      if (idx < size) {
+        state.manualSeeds[idx] = idx;
+      }
+    });
+  }
+
+  const rounds = [];
+  const r0 = [];
+  for (let i = 0; i < size / 2; i++) {
+    const p1 = state.manualSeeds[i * 2];
+    const p2 = state.manualSeeds[i * 2 + 1];
+    r0.push({ id: `w-0-${i}`, players: [p1, p2], scores: [null, null], winner: null, status: 'pending' });
+  }
+  rounds.push(r0);
+  
+  for (let r = 1; r < numRounds; r++) {
+    const n = size / Math.pow(2, r + 1);
+    const round = [];
+    for (let m = 0; m < n; m++) {
+      round.push({ id: `w-${r}-${m}`, players: [-1, -1], scores: [null, null], winner: null, status: 'pending' });
+    }
+    rounds.push(round);
+  }
+
+  const losersRounds = [];
+  if (state.bracketType === 'double' && size >= 4) {
+    const numLoserRounds = (numRounds - 1) * 2;
+    for (let r = 0; r < numLoserRounds; r++) {
+      const roundGroup = Math.floor(r / 2);
+      const n = size / Math.pow(2, roundGroup + 2);
+      const round = [];
+      for (let m = 0; m < n; m++) {
+        round.push({ id: `l-${r}-${m}`, players: [-1, -1], scores: [null, null], winner: null, status: 'pending' });
+      }
+      losersRounds.push(round);
+    }
+  }
+
+  return {
+    type: state.bracketType || 'single',
+    rounds,
+    winnersRounds: rounds,
+    losersRounds,
+    grandFinal: state.bracketType === 'double' ? { id: 'gf', players: [-1, -1], scores: [null, null], winner: null, status: 'pending' } : null
+  };
+}
+
+function handlePlayerDrop(event, rIdx, mIdx, slot) {
+  event.preventDefault();
+  const rawData = event.dataTransfer.getData('text/plain');
+  let playerIdx = NaN;
+  if (rawData) {
+    try {
+      const parsed = JSON.parse(rawData);
+      if (parsed && typeof parsed === 'object' && 'index' in parsed) {
+        playerIdx = parseInt(parsed.index);
+      } else {
+        playerIdx = parseInt(parsed);
+      }
+    } catch (e) {
+      playerIdx = parseInt(rawData);
+    }
+  }
+  if (isNaN(playerIdx) || !state || state.status !== 'setup') return;
+
+  const size = computeActualBracketSize();
+  if (!state.manualSeeds || state.manualSeeds.length !== size) {
+    state.manualSeeds = Array(size).fill(-3);
+  }
+
+  if (rIdx !== 0) {
+    showToast('Can only seed players directly into the first round.', 'warning');
+    return;
+  }
+
+  const targetSeedIdx = mIdx * 2 + slot;
+  const oldSeedIdx = state.manualSeeds.indexOf(playerIdx);
+  if (oldSeedIdx !== -1) {
+    state.manualSeeds[oldSeedIdx] = state.manualSeeds[targetSeedIdx];
+  }
+  
+  state.manualSeeds[targetSeedIdx] = playerIdx;
+
+  saveState(false);
+  renderHostView();
+}
+window.handlePlayerDrop = handlePlayerDrop;
+
+function makeMatchNodeDraggable(node, canvasId) {
+  const header = node.querySelector('.match-node-header');
+  if (!header) return;
+  
+  header.style.cursor = 'grab';
+
+  header.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest('button, input, .team-row')) return;
+
+    // Clear any other active match nodes first
+    document.querySelectorAll('.match-node.drag-active').forEach(n => {
+      n.classList.remove('drag-active', 'dragging');
+      const h = n.querySelector('.match-node-header');
+      if (h) h.style.cursor = 'grab';
+    });
+
+    // Start dragging immediately!
+    e.stopPropagation();
+    e.preventDefault();
+
+    header.style.cursor = 'grabbing';
+    node.classList.add('drag-active', 'dragging');
+    node.style.zIndex = 1000;
+    node.style.boxShadow = '0 12px 30px rgba(0,0,0,0.6)';
+
+    const canvas = document.getElementById(canvasId);
+    let startX = node.offsetLeft;
+    let startY = node.offsetTop;
+
+    let placeholder = null;
+    if (node.style.position !== 'absolute') {
+      placeholder = document.createElement('div');
+      placeholder.className = 'match-node-placeholder';
+      placeholder.style.width = `${node.offsetWidth}px`;
+      placeholder.style.height = `${node.offsetHeight}px`;
+      placeholder.style.margin = '0';
+      placeholder.style.flexShrink = '0';
+      placeholder.style.visibility = 'hidden';
+      node.parentNode.insertBefore(placeholder, node);
+
+      node.style.position = 'absolute';
+      node.style.left = `${startX}px`;
+      node.style.top = `${startY}px`;
+      node.style.margin = '0';
+    }
+
+    const initialMouseX = e.clientX;
+    const initialMouseY = e.clientY;
+
+    const prefix = node.id.split('-')[1];
+    // Capture rounds once on drag start to prevent heavy re-generation inside mousemove
+    const rounds = prefix === 'w' 
+      ? (state.bracket ? state.bracket.winnersRounds : getSkeletonBracket().winnersRounds) 
+      : (state.bracket ? state.bracket.losersRounds : getSkeletonBracket().losersRounds);
+
+    let currentX = startX;
+    let currentY = startY;
+    let frameRequested = false;
+
+    function onMouseMove(moveEvent) {
+      const cs = getCanvasState(canvasId);
+      const deltaX = (moveEvent.clientX - initialMouseX) / cs.zoomScale;
+      const deltaY = (moveEvent.clientY - initialMouseY) / cs.zoomScale;
+
+      currentX = startX + deltaX;
+      currentY = startY + deltaY;
+
+      if (!frameRequested) {
+        frameRequested = true;
+        requestAnimationFrame(() => {
+          node.style.left = `${currentX}px`;
+          node.style.top = `${currentY}px`;
+          
+          drawConnectors(canvas, `svg-${prefix}-${canvasId}`, rounds, prefix, canvasId);
+          
+          frameRequested = false;
+        });
+      }
+    }
+
+    function onMouseUp() {
+      header.style.cursor = 'grab';
+      node.style.zIndex = '';
+      node.style.boxShadow = '';
+      node.classList.remove('drag-active', 'dragging');
+
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+
+      if (!state.customCoordinates) state.customCoordinates = {};
+      state.customCoordinates[node.id] = {
+        x: currentX,
+        y: currentY
+      };
+
+      saveState(false);
+    }
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  });
+}
+
+function renderSingleMatchNode(col, match, rIdx, mIdx, prefix, canvasId, isLive) {
+  const p1 = getPlayerInfo(match.players[0]);
+  const p2 = getPlayerInfo(match.players[1]);
+
+  const node = document.createElement('div');
+  node.className = `match-node ${match.status}`;
+  node.id = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
+
+  const hasCoords = state.customCoordinates && state.customCoordinates[node.id];
+  if (hasCoords) {
+    node.style.position = 'absolute';
+    node.style.left = `${state.customCoordinates[node.id].x}px`;
+    node.style.top = `${state.customCoordinates[node.id].y}px`;
+    node.style.margin = '0';
+
+    const placeholder = document.createElement('div');
+    placeholder.className = 'match-node-placeholder';
+    placeholder.style.width = '260px';
+    placeholder.style.height = '95px';
+    placeholder.style.margin = '0';
+    placeholder.style.flexShrink = '0';
+    placeholder.style.visibility = 'hidden';
+    col.appendChild(placeholder);
+  }
+
+
+  let hdrHtml = match.isThirdPlace ? '3rd Place Match' : `Match ${mIdx + 1}`;
+  let hdrCls = '';
+  if (match.status === 'in-progress') { hdrHtml = '<i class="fa-solid fa-gamepad"></i> Playing'; hdrCls = 'active-tag'; }
+
+  const p1W = match.winner === match.players[0] && match.status === 'completed';
+  const p2W = match.winner === match.players[1] && match.status === 'completed';
+  const clickable = !isLive && state.status === 'running';
+  const clickStr = clickable ? `onclick="handleMatchClick('${prefix}','${canvasId}',${rIdx},${mIdx})"` : '';
+
+  const showByeFill = !isLive && state.status === 'running';
+  const p1IsBye = (match.players[0] === -2 || (match.players[0] >= (state.players?.length || 0) && match.players[0] >= 0));
+  const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
+
+  const p1Row = showByeFill && p1IsBye
+    ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
+    : `<span class="team-name" title="${escapeHTML(p1.name)}">${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>`;
+
+  const p2Row = showByeFill && p2IsBye
+    ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
+    : `<span class="team-name" title="${escapeHTML(p2.name)}">${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>`;
+
+  node.innerHTML = `
+    <div class="match-node-header ${hdrCls}">${hdrHtml}</div>
+    <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls}" ${clickStr}>${p1Row}</div>
+    <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls}" ${clickStr}>${p2Row}</div>
+  `;
+  col.appendChild(node);
+
+  const isSetup = state.status === 'setup';
+  if (isSetup) {
+    const rows = node.querySelectorAll('.team-row');
+    if (rows[0]) {
+      rows[0].addEventListener('dragover', (e) => {
+        e.preventDefault();
+        rows[0].classList.add('drag-over');
+      });
+      rows[0].addEventListener('dragleave', () => {
+        rows[0].classList.remove('drag-over');
+      });
+      rows[0].addEventListener('drop', (e) => {
+        rows[0].classList.remove('drag-over');
+        handlePlayerDrop(e, rIdx, mIdx, 0);
+      });
+    }
+    if (rows[1]) {
+      rows[1].addEventListener('dragover', (e) => {
+        e.preventDefault();
+        rows[1].classList.add('drag-over');
+      });
+      rows[1].addEventListener('dragleave', () => {
+        rows[1].classList.remove('drag-over');
+      });
+      rows[1].addEventListener('drop', (e) => {
+        rows[1].classList.remove('drag-over');
+        handlePlayerDrop(e, rIdx, mIdx, 1);
+      });
+    }
+  }
+
+  setTimeout(() => {
+    makeMatchNodeDraggable(node, canvasId);
+  }, 0);
+}
+
+// ==========================================================================
 // BRACKET CANVAS RENDERER (single + double rounds)
 // ==========================================================================
 function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
@@ -1111,8 +1454,15 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
 
   if (!rounds || !rounds.length) {
     canvas.innerHTML = '<div class="empty-list-placeholder" style="margin:auto;padding:2rem;font-size:1.1rem">Set up the tournament and click "Start" to generate the bracket.</div>';
+    canvas.style.height = 'auto';
     return;
   }
+
+  // Calculate dynamic height based on first round matches to prevent overlapping/collapsing
+  const matchCount = rounds[0] ? rounds[0].length : 0;
+  const minHeightPerMatch = 150; // Spacing is crucial here. Let's use 150px per match card.
+  const requiredHeight = Math.max(matchCount * minHeightPerMatch, 600);
+  canvas.style.height = `${requiredHeight}px`;
 
   // SVG overlay for connector lines (placed first so nodes render on top)
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -1120,63 +1470,156 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
   svg.id = `svg-${prefix}-${canvasId}`;
   canvas.appendChild(svg);
 
-  // Render round columns
-  rounds.forEach((round, rIdx) => {
-    const col = document.createElement('div');
-    col.className = 'round-column';
+  // Check if we should render split left/right layout (for 16+ bracket size, where rounds[0].length >= 4)
+  const shouldSplit = false;
 
-    const header = document.createElement('div');
-    header.className = 'round-title-header';
-    const isFinal = rIdx === rounds.length - 1;
-    if (prefix === 'w') {
-      header.textContent = isFinal
-        ? (state.bracket.type === 'double' ? 'Winners Final' : 'Final')
-        : `Round ${rIdx + 1}`;
-    } else {
-      header.textContent = isFinal ? 'Losers Final' : `L-Round ${rIdx + 1}`;
+  if (shouldSplit) {
+    const splitContainer = document.createElement('div');
+    splitContainer.className = 'split-bracket-container';
+    
+    const leftBracket = document.createElement('div');
+    leftBracket.className = 'left-bracket';
+    
+    const rightBracket = document.createElement('div');
+    rightBracket.className = 'right-bracket';
+    rightBracket.style.flexDirection = 'row-reverse';
+    
+    const centerFinal = document.createElement('div');
+    centerFinal.className = 'center-final';
+
+    const numRounds = rounds.length;
+
+    // Loop through rounds up to penultimate
+    for (let rIdx = 0; rIdx < numRounds - 1; rIdx++) {
+      const round = rounds[rIdx];
+      const mid = round.length / 2;
+
+      // Left Column
+      const leftCol = document.createElement('div');
+      leftCol.className = 'round-column';
+      const leftHeader = document.createElement('div');
+      leftHeader.className = 'round-title-header';
+      leftHeader.textContent = `Round ${rIdx + 1} (Left)`;
+      leftCol.appendChild(leftHeader);
+
+      if (rIdx === 0) {
+        const activeMatches = [];
+        const byeMatches = [];
+        for (let mIdx = 0; mIdx < mid; mIdx++) {
+          const match = round[mIdx];
+          if (hasBye(match)) byeMatches.push({ match, mIdx });
+          else activeMatches.push({ match, mIdx });
+        }
+        activeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(leftCol, match, rIdx, mIdx, prefix, canvasId, isLive));
+        if (byeMatches.length > 0) {
+          const sep = document.createElement('div');
+          sep.className = 'bye-separator';
+          sep.textContent = 'Bye Matches';
+          leftCol.appendChild(sep);
+        }
+        byeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(leftCol, match, rIdx, mIdx, prefix, canvasId, isLive));
+      } else {
+        for (let mIdx = 0; mIdx < mid; mIdx++) {
+          renderSingleMatchNode(leftCol, round[mIdx], rIdx, mIdx, prefix, canvasId, isLive);
+        }
+      }
+      leftBracket.appendChild(leftCol);
+
+      // Right Column
+      const rightCol = document.createElement('div');
+      rightCol.className = 'round-column';
+      const rightHeader = document.createElement('div');
+      rightHeader.className = 'round-title-header';
+      rightHeader.textContent = `Round ${rIdx + 1} (Right)`;
+      rightCol.appendChild(rightHeader);
+
+      if (rIdx === 0) {
+        const activeMatches = [];
+        const byeMatches = [];
+        for (let mIdx = mid; mIdx < round.length; mIdx++) {
+          const match = round[mIdx];
+          if (hasBye(match)) byeMatches.push({ match, mIdx });
+          else activeMatches.push({ match, mIdx });
+        }
+        activeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(rightCol, match, rIdx, mIdx, prefix, canvasId, isLive));
+        if (byeMatches.length > 0) {
+          const sep = document.createElement('div');
+          sep.className = 'bye-separator';
+          sep.textContent = 'Bye Matches';
+          rightCol.appendChild(sep);
+        }
+        byeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(rightCol, match, rIdx, mIdx, prefix, canvasId, isLive));
+      } else {
+        for (let mIdx = mid; mIdx < round.length; mIdx++) {
+          renderSingleMatchNode(rightCol, round[mIdx], rIdx, mIdx, prefix, canvasId, isLive);
+        }
+      }
+      rightBracket.appendChild(rightCol);
     }
-    col.appendChild(header);
 
-    round.forEach((match, mIdx) => {
-      const p1 = getPlayerInfo(match.players[0]);
-      const p2 = getPlayerInfo(match.players[1]);
-
-      const node = document.createElement('div');
-      node.className = `match-node ${match.status}`;
-      node.id = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
-
-      let hdrHtml = match.isThirdPlace ? '3rd Place Match' : `Match ${mIdx + 1}`;
-      let hdrCls = '';
-      if (match.status === 'in-progress') { hdrHtml = '<i class="fa-solid fa-gamepad"></i> Playing'; hdrCls = 'active-tag'; }
-
-      const p1W = match.winner === match.players[0] && match.status === 'completed';
-      const p2W = match.winner === match.players[1] && match.status === 'completed';
-      const clickable = !isLive && state.status === 'running';
-      const clickStr = clickable ? `onclick="handleMatchClick('${prefix}','${canvasId}',${rIdx},${mIdx})"` : '';
-
-      // Bye filler for setup (both brackets)
-      const showByeFill = !isLive && state.status === 'running';
-      const p1IsBye = (match.players[0] === -2 || (match.players[0] >= (state.players?.length || 0) && match.players[0] >= 0));
-      const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
-
-      const p1Row = showByeFill && p1IsBye
-        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
-        : `<span class="team-name" title="${escapeHTML(p1.name)}">${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>`;
-
-      const p2Row = showByeFill && p2IsBye
-        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
-        : `<span class="team-name" title="${escapeHTML(p2.name)}">${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>`;
-
-      node.innerHTML = `
-        <div class="match-node-header ${hdrCls}">${hdrHtml}</div>
-        <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls}" ${clickStr}>${p1Row}</div>
-        <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls}" ${clickStr}>${p2Row}</div>
-      `;
-      col.appendChild(node);
+    // Center Column (Final)
+    const finalRoundIdx = numRounds - 1;
+    const finalRound = rounds[finalRoundIdx];
+    const finalCol = document.createElement('div');
+    finalCol.className = 'round-column';
+    const finalHeader = document.createElement('div');
+    finalHeader.className = 'round-title-header';
+    finalHeader.textContent = prefix === 'w' ? 'Final' : 'Losers Final';
+    finalCol.appendChild(finalHeader);
+    
+    finalRound.forEach((match, mIdx) => {
+      renderSingleMatchNode(finalCol, match, finalRoundIdx, mIdx, prefix, canvasId, isLive);
     });
+    centerFinal.appendChild(finalCol);
 
-    canvas.appendChild(col);
-  });
+    splitContainer.appendChild(leftBracket);
+    splitContainer.appendChild(centerFinal);
+    splitContainer.appendChild(rightBracket);
+    canvas.appendChild(splitContainer);
+  } else {
+    // Render round columns normally
+    rounds.forEach((round, rIdx) => {
+      const col = document.createElement('div');
+      col.className = 'round-column';
+      col.style.height = `${requiredHeight}px`;
+
+      const header = document.createElement('div');
+      header.className = 'round-title-header';
+      const isFinal = rIdx === rounds.length - 1;
+      if (prefix === 'w') {
+        header.textContent = isFinal
+          ? (state.bracketType === 'double' ? 'Winners Final' : 'Final')
+          : `Round ${rIdx + 1}`;
+      } else {
+        header.textContent = isFinal ? 'Losers Final' : `L-Round ${rIdx + 1}`;
+      }
+      col.appendChild(header);
+
+      if (rIdx === 0) {
+        const activeMatches = [];
+        const byeMatches = [];
+        round.forEach((match, mIdx) => {
+          if (hasBye(match)) byeMatches.push({ match, mIdx });
+          else activeMatches.push({ match, mIdx });
+        });
+
+        activeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(col, match, rIdx, mIdx, prefix, canvasId, isLive));
+        if (byeMatches.length > 0) {
+          const sep = document.createElement('div');
+          sep.className = 'bye-separator';
+          sep.textContent = 'Bye Matches';
+          col.appendChild(sep);
+        }
+        byeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(col, match, rIdx, mIdx, prefix, canvasId, isLive));
+      } else {
+        round.forEach((match, mIdx) => {
+          renderSingleMatchNode(col, match, rIdx, mIdx, prefix, canvasId, isLive);
+        });
+      }
+
+      canvas.appendChild(col);
+    });
+  }
 
   // Draw connectors after layout paint
   setTimeout(() => drawConnectors(canvas, `svg-${prefix}-${canvasId}`, rounds, prefix, canvasId), 80);
@@ -1185,11 +1628,11 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
 // ==========================================================================
 // GRAND FINAL RENDERER
 // ==========================================================================
-function renderGrandFinal(containerId, isLive) {
+function renderGrandFinal(containerId, isLive, bracketToRender = state?.bracket) {
   const container = document.getElementById(containerId);
-  if (!container || !state?.bracket?.grandFinal) { if (container) container.classList.add('hidden'); return; }
+  if (!container || !bracketToRender?.grandFinal) { if (container) container.classList.add('hidden'); return; }
 
-  const gf = state.bracket.grandFinal;
+  const gf = bracketToRender.grandFinal;
   const p1 = getPlayerInfo(gf.players[0]);
   const p2 = getPlayerInfo(gf.players[1]);
   const p1W = gf.winner === gf.players[0] && gf.status === 'completed';
@@ -1234,8 +1677,11 @@ function drawConnectors(canvas, svgId, rounds, prefix, canvasId) {
 
     round.forEach((match, mIdx) => {
       const startId = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
-      const nextMi  = Math.floor(mIdx / 2);
+      const nextMi  = (prefix === 'l')
+        ? ((rIdx % 2 === 0) ? mIdx : Math.floor(mIdx / 2))
+        : Math.floor(mIdx / 2);
       const endId   = `mn-${prefix}-${canvasId}-${rIdx + 1}-${nextMi}`;
+
 
       const startNode = document.getElementById(startId);
       const endNode   = document.getElementById(endId);
@@ -1254,6 +1700,7 @@ function drawConnectors(canvas, svgId, rounds, prefix, canvasId) {
 
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`);
+      path.setAttribute('fill', 'none');
       path.setAttribute('class', `connector-line ${match.status === 'in-progress' ? 'active' : ''} ${match.status === 'completed' ? 'done' : ''}`);
       svg.appendChild(path);
     });
@@ -1278,6 +1725,8 @@ function setupZoomPan(containerId, canvasId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
+  const cs = getCanvasState(canvasId);
+
   // Reset state and center the view dynamically based on generated bracket size
   setTimeout(() => {
     centerBracketView(canvasId, containerId);
@@ -1287,44 +1736,46 @@ function setupZoomPan(containerId, canvasId) {
 
   container.addEventListener('mousedown', (e) => {
     if (e.target.closest('button, input, .team-row')) return;
-    isDragging = true; container.style.cursor = 'grabbing';
-    startDragX = e.clientX - panX; startDragY = e.clientY - panY;
+    cs.isDragging = true; container.style.cursor = 'grabbing';
+    cs.startDragX = e.clientX - cs.panX; cs.startDragY = e.clientY - cs.panY;
   });
   window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    panX = e.clientX - startDragX; panY = e.clientY - startDragY; applyTf();
+    if (!cs.isDragging) return;
+    cs.panX = e.clientX - cs.startDragX; cs.panY = e.clientY - cs.startDragY; applyTf();
   });
-  window.addEventListener('mouseup', () => { isDragging = false; container.style.cursor = 'grab'; });
+  window.addEventListener('mouseup', () => { cs.isDragging = false; container.style.cursor = 'grab'; });
 
   container.addEventListener('wheel', (e) => {
     e.preventDefault();
     const rect = container.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    const cx = (mx - panX) / zoomScale, cy = (my - panY) / zoomScale;
-    zoomScale = e.deltaY < 0
-      ? Math.min(zoomScale + 0.05, 2.5)
-      : Math.max(zoomScale - 0.05, 0.15);
-    panX = mx - cx * zoomScale; panY = my - cy * zoomScale; applyTf();
+    const cx = (mx - cs.panX) / cs.zoomScale, cy = (my - cs.panY) / cs.zoomScale;
+    cs.zoomScale = e.deltaY < 0
+      ? Math.min(cs.zoomScale + 0.05, 2.5)
+      : Math.max(cs.zoomScale - 0.05, 0.15);
+    cs.panX = mx - cx * cs.zoomScale; cs.panY = my - cy * cs.zoomScale; applyTf();
   }, { passive: false });
 
   // Touch support
   container.addEventListener('touchstart', (e) => {
     if (e.target.closest('button, input, .team-row')) return;
     if (e.touches.length === 1) {
-      isDragging = true; startDragX = e.touches[0].clientX - panX; startDragY = e.touches[0].clientY - panY;
+      cs.isDragging = true; cs.startDragX = e.touches[0].clientX - cs.panX; cs.startDragY = e.touches[0].clientY - cs.panY;
     }
   }, { passive: true });
   container.addEventListener('touchmove', (e) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    panX = e.touches[0].clientX - startDragX; panY = e.touches[0].clientY - startDragY; applyTf();
+    if (!cs.isDragging || e.touches.length !== 1) return;
+    cs.panX = e.touches[0].clientX - cs.startDragX; cs.panY = e.touches[0].clientY - cs.startDragY; applyTf();
   }, { passive: true });
-  container.addEventListener('touchend', () => { isDragging = false; });
+  container.addEventListener('touchend', () => { cs.isDragging = false; });
 }
 
 function centerBracketView(canvasId, containerId) {
   const canvas = document.getElementById(canvasId);
   const container = document.getElementById(containerId);
   if (!canvas || !container) return;
+
+  const cs = getCanvasState(canvasId);
 
   const originalTransform = canvas.style.transform;
   canvas.style.transform = 'none';
@@ -1338,28 +1789,31 @@ function centerBracketView(canvasId, containerId) {
   canvas.style.transform = originalTransform;
 
   if (contentWidth <= 0 || contentHeight <= 0) {
-    zoomScale = 0.75;
-    panX = 40;
-    panY = 50;
+    cs.zoomScale = 0.75;
+    cs.panX = 40;
+    cs.panY = 50;
     applyTransform(canvasId);
     return;
   }
 
   const zoomX = (containerWidth * 0.9) / contentWidth;
   const zoomY = (containerHeight * 0.9) / contentHeight;
-  zoomScale = Math.min(zoomX, zoomY, 1.2);
-  zoomScale = Math.max(zoomScale, 0.2);
-  zoomScale = Math.round(zoomScale * 100) / 100;
+  cs.zoomScale = Math.min(zoomX, zoomY, 1.2);
+  cs.zoomScale = Math.max(cs.zoomScale, 0.2);
+  cs.zoomScale = Math.round(cs.zoomScale * 100) / 100;
 
-  panX = Math.round((containerWidth - contentWidth * zoomScale) / 2);
-  panY = Math.round((containerHeight - contentHeight * zoomScale) / 2);
+  cs.panX = Math.round((containerWidth - contentWidth * cs.zoomScale) / 2);
+  cs.panY = Math.round((containerHeight - contentHeight * cs.zoomScale) / 2);
 
   applyTransform(canvasId);
 }
 
 function applyTransform(canvasId) {
   const el = document.getElementById(canvasId);
-  if (el) el.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
+  if (el) {
+    const cs = getCanvasState(canvasId);
+    el.style.transform = `translate(${cs.panX}px, ${cs.panY}px) scale(${cs.zoomScale})`;
+  }
 }
 
 // ==========================================================================
@@ -1495,37 +1949,13 @@ function closeMatchModal() {
 // BYE SLOT FILLER
 // ==========================================================================
 function fillByeSlotDirectly(prefix, canvasId, rIdx, mIdx, slot) {
-  const name = prompt('Enter Participant Name:');
-  if (!name?.trim()) return;
-  const companyId = prompt('Enter Company ID:');
-  if (!companyId?.trim()) return;
-
-  saveState();
-  const newPlayer = { name: name.trim(), companyId: companyId.trim(), status: 'active' };
-  state.players.push(newPlayer);
-  const newIdx = state.players.length - 1;
-
-  let match;
-  if (prefix === 'w') {
-    match = state.bracket.type === 'double'
-      ? state.bracket.winnersRounds[rIdx][mIdx]
-      : state.bracket.rounds[rIdx][mIdx];
-  } else {
-    match = state.bracket.losersRounds[rIdx][mIdx];
-  }
-
-  match.players[slot] = newIdx;
-  const other = match.players[slot === 0 ? 1 : 0];
-
-  if (isByePlayer(other)) { match.winner = newIdx; match.status = 'completed'; }
-  else { match.winner = null; match.status = 'pending'; }
-
-  if (state.bracket.type === 'double') propagateDoubleElim();
-  else propagateWinnersRound(rIdx);
-
-  saveState(false);
-  renderHostView();
+  activeByeSlot = { prefix, canvasId, rIdx, mIdx, slot };
+  document.getElementById('bye-player-name').value = '';
+  document.getElementById('bye-player-id').value = '';
+  document.getElementById('fill-bye-slot-modal').classList.remove('hidden');
 }
+
+
 
 // ==========================================================================
 // PLAYER MANAGEMENT
@@ -1659,13 +2089,14 @@ function trackPlayerInBracket(playerIndex) {
       }
     }
 
+    const cs = getCanvasState(first.canvasId);
     const offset = getOffsetRelativeTo(nodeEl, canvasEl);
     const nodeCenterX = offset.left + nodeEl.offsetWidth / 2;
     const nodeCenterY = offset.top + nodeEl.offsetHeight / 2;
 
     const rect = containerEl.getBoundingClientRect();
-    panX = rect.width / 2 - nodeCenterX * zoomScale;
-    panY = rect.height / 2 - nodeCenterY * zoomScale;
+    cs.panX = rect.width / 2 - nodeCenterX * cs.zoomScale;
+    cs.panY = rect.height / 2 - nodeCenterY * cs.zoomScale;
     applyTransform(first.canvasId);
   }
 }
@@ -2222,11 +2653,9 @@ function setupEventListeners() {
   // Add manual player
   document.getElementById('btn-add-manual').addEventListener('click', () => {
     if (!state) return;
-    const name = prompt('Participant Name:');
-    if (!name?.trim()) return;
-    const id = prompt('Company ID:');
-    if (!id?.trim()) return;
-    addPlayer(name.trim(), id.trim());
+    document.getElementById('add-player-name').value = '';
+    document.getElementById('add-player-id').value = '';
+    document.getElementById('add-manual-participant-modal').classList.remove('hidden');
   });
 
   // Shuffle players
@@ -2312,6 +2741,76 @@ function setupEventListeners() {
   document.getElementById('btn-close-edit-modal').addEventListener('click', () => {
     document.getElementById('participant-edit-modal').classList.add('hidden');
     editTargetIndex = null;
+  });
+
+  // Add participant modal
+  document.getElementById('add-participant-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!state) return;
+    const name = document.getElementById('add-player-name').value.trim();
+    const id = document.getElementById('add-player-id').value.trim();
+    if (!name || !id) return;
+    
+    // Check if ID is unique
+    if (state.players.some(p => p.companyId.toLowerCase() === id.toLowerCase())) {
+      showToast(`Company ID "${id}" is already registered.`, 'error');
+      return;
+    }
+    
+    document.getElementById('add-manual-participant-modal').classList.add('hidden');
+    addPlayer(name, id);
+  });
+  document.getElementById('btn-close-add-modal').addEventListener('click', () => {
+    document.getElementById('add-manual-participant-modal').classList.add('hidden');
+  });
+
+  // Fill Bye Slot modal
+  document.getElementById('fill-bye-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!activeByeSlot || !state) return;
+    const name = document.getElementById('bye-player-name').value.trim();
+    const companyId = document.getElementById('bye-player-id').value.trim();
+    if (!name || !companyId) return;
+
+    // Check if companyId is unique
+    if (state.players.some(p => p.companyId.toLowerCase() === companyId.toLowerCase())) {
+      showToast(`Company ID "${companyId}" is already registered.`, 'error');
+      return;
+    }
+
+    const { prefix, canvasId, rIdx, mIdx, slot } = activeByeSlot;
+    
+    saveState();
+    const newPlayer = { name, companyId, status: 'active' };
+    state.players.push(newPlayer);
+    const newIdx = state.players.length - 1;
+
+    let match;
+    if (prefix === 'w') {
+      match = state.bracket.type === 'double'
+        ? state.bracket.winnersRounds[rIdx][mIdx]
+        : state.bracket.rounds[rIdx][mIdx];
+    } else {
+      match = state.bracket.losersRounds[rIdx][mIdx];
+    }
+
+    match.players[slot] = newIdx;
+    const other = match.players[slot === 0 ? 1 : 0];
+
+    if (isByePlayer(other)) { match.winner = newIdx; match.status = 'completed'; }
+    else { match.winner = null; match.status = 'pending'; }
+
+    if (state.bracket.type === 'double') propagateDoubleElim();
+    else propagateWinnersRound(rIdx);
+
+    document.getElementById('fill-bye-slot-modal').classList.add('hidden');
+    activeByeSlot = null;
+    saveState(false);
+    renderHostView();
+  });
+  document.getElementById('btn-close-bye-modal').addEventListener('click', () => {
+    document.getElementById('fill-bye-slot-modal').classList.add('hidden');
+    activeByeSlot = null;
   });
 
   // Delete participant modal
@@ -2409,28 +2908,57 @@ function setupEventListeners() {
 
   // Zoom controls (host view)
   document.getElementById('btn-zoom-in').addEventListener('click', () => {
-    zoomScale = Math.min(zoomScale + 0.15, 2.5);
+    const s1 = getCanvasState('bracket-canvas');
+    s1.zoomScale = Math.min(s1.zoomScale + 0.15, 2.5);
     applyTransform('bracket-canvas');
+
+    const s2 = getCanvasState('losers-bracket-canvas');
+    s2.zoomScale = Math.min(s2.zoomScale + 0.15, 2.5);
+    applyTransform('losers-bracket-canvas');
   });
   document.getElementById('btn-zoom-out').addEventListener('click', () => {
-    zoomScale = Math.max(zoomScale - 0.15, 0.15);
+    const s1 = getCanvasState('bracket-canvas');
+    s1.zoomScale = Math.max(s1.zoomScale - 0.15, 0.15);
     applyTransform('bracket-canvas');
+
+    const s2 = getCanvasState('losers-bracket-canvas');
+    s2.zoomScale = Math.max(s2.zoomScale - 0.15, 0.15);
+    applyTransform('losers-bracket-canvas');
   });
   document.getElementById('btn-zoom-reset').addEventListener('click', () => {
     centerBracketView('bracket-canvas', 'bracket-canvas-container');
+    centerBracketView('losers-bracket-canvas', 'losers-bracket-canvas-container');
+  });
+  document.getElementById('btn-reset-layout').addEventListener('click', () => {
+    if (!state) return;
+    saveState();
+    state.customCoordinates = {};
+    saveState(false);
+    renderHostView();
   });
 
   // Zoom controls (live view)
   document.getElementById('btn-live-zoom-in').addEventListener('click', () => {
-    zoomScale = Math.min(zoomScale + 0.15, 2.5);
+    const s1 = getCanvasState('live-bracket-canvas');
+    s1.zoomScale = Math.min(s1.zoomScale + 0.15, 2.5);
     applyTransform('live-bracket-canvas');
+
+    const s2 = getCanvasState('live-losers-bracket-canvas');
+    s2.zoomScale = Math.min(s2.zoomScale + 0.15, 2.5);
+    applyTransform('live-losers-bracket-canvas');
   });
   document.getElementById('btn-live-zoom-out').addEventListener('click', () => {
-    zoomScale = Math.max(zoomScale - 0.15, 0.15);
+    const s1 = getCanvasState('live-bracket-canvas');
+    s1.zoomScale = Math.max(s1.zoomScale - 0.15, 0.15);
     applyTransform('live-bracket-canvas');
+
+    const s2 = getCanvasState('live-losers-bracket-canvas');
+    s2.zoomScale = Math.max(s2.zoomScale - 0.15, 0.15);
+    applyTransform('live-losers-bracket-canvas');
   });
   document.getElementById('btn-live-zoom-reset').addEventListener('click', () => {
     centerBracketView('live-bracket-canvas', 'live-bracket-canvas-container');
+    centerBracketView('live-losers-bracket-canvas', 'live-losers-bracket-canvas-container');
   });
 
   // Single / Double View Toggles
@@ -2600,6 +3128,16 @@ function setupEventListeners() {
     window.location.search = `?tournamentId=${id}`;
   });
 
+  window.addEventListener('mousedown', (e) => {
+    if (!e.target.closest('.match-node')) {
+      document.querySelectorAll('.match-node.drag-active').forEach(n => {
+        n.classList.remove('drag-active');
+        const h = n.querySelector('.match-node-header');
+        if (h) h.style.cursor = 'pointer';
+      });
+    }
+  });
+
   setupDragAndDrop();
 } // end setupEventListeners
 
@@ -2660,6 +3198,10 @@ function setupDragAndDrop() {
       }
       e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'sidebar', index: parseInt(row.dataset.index) }));
       row.classList.add('dragging');
+
+      const name = row.querySelector('.player-name')?.textContent || 'Participant';
+      createDragPreview(e, name);
+      document.body.classList.add('drag-active-participant');
     });
 
     sidebarList.addEventListener('dragover', (e) => {
@@ -2696,6 +3238,9 @@ function setupDragAndDrop() {
         row.setAttribute('draggable', 'false');
       }
       sidebarList.querySelectorAll('.player-item-row').forEach(r => r.classList.remove('drag-over', 'dragging'));
+      document.body.classList.remove('drag-active-participant');
+      const preview = document.getElementById('custom-drag-preview');
+      if (preview) preview.remove();
     });
   }
 
@@ -2722,6 +3267,10 @@ function setupDragAndDrop() {
       }
       e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'table', index: parseInt(row.dataset.index) }));
       row.classList.add('dragging');
+
+      const name = row.querySelector('.player-name-cell')?.textContent || 'Participant';
+      createDragPreview(e, name);
+      document.body.classList.add('drag-active-participant');
     });
 
     tableBody.addEventListener('dragover', (e) => {
@@ -2758,6 +3307,9 @@ function setupDragAndDrop() {
         row.setAttribute('draggable', 'false');
       }
       tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('drag-over', 'dragging'));
+      document.body.classList.remove('drag-active-participant');
+      const preview = document.getElementById('custom-drag-preview');
+      if (preview) preview.remove();
     });
   }
 }
@@ -2838,61 +3390,154 @@ function renderUnifiedDoubleBracket(canvasId, isLive) {
 function renderRoundColumnsInto(container, rounds, prefix, canvasId, isLive) {
   if (!rounds || !rounds.length) return;
 
-  rounds.forEach((round, rIdx) => {
-    const col = document.createElement('div');
-    col.className = 'round-column';
+  const shouldSplit = false;
 
-    const header = document.createElement('div');
-    header.className = 'round-title-header';
-    const isFinal = rIdx === rounds.length - 1;
-    if (prefix === 'w') {
-      header.textContent = isFinal
-        ? (state.bracket.type === 'double' ? 'Winners Final' : 'Final')
-        : `Round ${rIdx + 1}`;
-    } else {
-      header.textContent = isFinal ? 'Losers Final' : `L-Round ${rIdx + 1}`;
+  if (shouldSplit) {
+    const splitContainer = document.createElement('div');
+    splitContainer.className = 'split-bracket-container';
+    
+    const leftBracket = document.createElement('div');
+    leftBracket.className = 'left-bracket';
+    
+    const rightBracket = document.createElement('div');
+    rightBracket.className = 'right-bracket';
+    rightBracket.style.flexDirection = 'row-reverse';
+    
+    const centerFinal = document.createElement('div');
+    centerFinal.className = 'center-final';
+
+    const numRounds = rounds.length;
+
+    for (let rIdx = 0; rIdx < numRounds - 1; rIdx++) {
+      const round = rounds[rIdx];
+      const mid = round.length / 2;
+
+      const leftCol = document.createElement('div');
+      leftCol.className = 'round-column';
+      const leftHeader = document.createElement('div');
+      leftHeader.className = 'round-title-header';
+      leftHeader.textContent = `Round ${rIdx + 1} (Left)`;
+      leftCol.appendChild(leftHeader);
+
+      if (rIdx === 0) {
+        const activeMatches = [];
+        const byeMatches = [];
+        for (let mIdx = 0; mIdx < mid; mIdx++) {
+          const match = round[mIdx];
+          if (hasBye(match)) byeMatches.push({ match, mIdx });
+          else activeMatches.push({ match, mIdx });
+        }
+        activeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(leftCol, match, rIdx, mIdx, prefix, canvasId, isLive));
+        if (byeMatches.length > 0) {
+          const sep = document.createElement('div');
+          sep.className = 'bye-separator';
+          sep.textContent = 'Bye Matches';
+          leftCol.appendChild(sep);
+        }
+        byeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(leftCol, match, rIdx, mIdx, prefix, canvasId, isLive));
+      } else {
+        for (let mIdx = 0; mIdx < mid; mIdx++) {
+          renderSingleMatchNode(leftCol, round[mIdx], rIdx, mIdx, prefix, canvasId, isLive);
+        }
+      }
+      leftBracket.appendChild(leftCol);
+
+      const rightCol = document.createElement('div');
+      rightCol.className = 'round-column';
+      const rightHeader = document.createElement('div');
+      rightHeader.className = 'round-title-header';
+      rightHeader.textContent = `Round ${rIdx + 1} (Right)`;
+      rightCol.appendChild(rightHeader);
+
+      if (rIdx === 0) {
+        const activeMatches = [];
+        const byeMatches = [];
+        for (let mIdx = mid; mIdx < round.length; mIdx++) {
+          const match = round[mIdx];
+          if (hasBye(match)) byeMatches.push({ match, mIdx });
+          else activeMatches.push({ match, mIdx });
+        }
+        activeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(rightCol, match, rIdx, mIdx, prefix, canvasId, isLive));
+        if (byeMatches.length > 0) {
+          const sep = document.createElement('div');
+          sep.className = 'bye-separator';
+          sep.textContent = 'Bye Matches';
+          rightCol.appendChild(sep);
+        }
+        byeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(rightCol, match, rIdx, mIdx, prefix, canvasId, isLive));
+      } else {
+        for (let mIdx = mid; mIdx < round.length; mIdx++) {
+          renderSingleMatchNode(rightCol, round[mIdx], rIdx, mIdx, prefix, canvasId, isLive);
+        }
+      }
+      rightBracket.appendChild(rightCol);
     }
-    col.appendChild(header);
 
-    round.forEach((match, mIdx) => {
-      const p1 = getPlayerInfo(match.players[0]);
-      const p2 = getPlayerInfo(match.players[1]);
-
-      const node = document.createElement('div');
-      node.className = `match-node ${match.status}`;
-      node.id = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
-
-      let hdrHtml = match.isThirdPlace ? '3rd Place Match' : `Match ${mIdx + 1}`;
-      let hdrCls = '';
-      if (match.status === 'in-progress') { hdrHtml = '<i class="fa-solid fa-gamepad"></i> Playing'; hdrCls = 'active-tag'; }
-
-      const p1W = match.winner === match.players[0] && match.status === 'completed';
-      const p2W = match.winner === match.players[1] && match.status === 'completed';
-      const clickable = !isLive && state.status === 'running';
-      const clickStr = clickable ? `onclick="handleMatchClick('${prefix}','${canvasId}',${rIdx},${mIdx})"` : '';
-
-      const showByeFill = !isLive && state.status === 'running';
-      const p1IsBye = (match.players[0] === -2 || (match.players[0] >= (state.players?.length || 0) && match.players[0] >= 0));
-      const p2IsBye = (match.players[1] === -2 || (match.players[1] >= (state.players?.length || 0) && match.players[1] >= 0));
-
-      const p1Row = showByeFill && p1IsBye
-        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},0)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
-        : `<span class="team-name" title="${escapeHTML(p1.name)}">${escapeHTML(p1.name)}</span><span class="team-score">${p1W ? 'W' : ''}</span>`;
-
-      const p2Row = showByeFill && p2IsBye
-        ? `<button class="bye-direct-input" onclick="event.stopPropagation();fillByeSlotDirectly('${prefix}','${canvasId}',${rIdx},${mIdx},1)"><i class="fa-solid fa-user-plus"></i> Fill Slot</button>`
-        : `<span class="team-name" title="${escapeHTML(p2.name)}">${escapeHTML(p2.name)}</span><span class="team-score">${p2W ? 'W' : ''}</span>`;
-
-      node.innerHTML = `
-        <div class="match-node-header ${hdrCls}">${hdrHtml}</div>
-        <div class="team-row ${p1W ? 'winner' : ''} ${p2W ? 'loser' : ''} ${p1.cls}" ${clickStr}>${p1Row}</div>
-        <div class="team-row ${p2W ? 'winner' : ''} ${p1W ? 'loser' : ''} ${p2.cls}" ${clickStr}>${p2Row}</div>
-      `;
-      col.appendChild(node);
+    const finalRoundIdx = numRounds - 1;
+    const finalRound = rounds[finalRoundIdx];
+    const finalCol = document.createElement('div');
+    finalCol.className = 'round-column';
+    const finalHeader = document.createElement('div');
+    finalHeader.className = 'round-title-header';
+    finalHeader.textContent = prefix === 'w' ? 'Final' : 'Losers Final';
+    finalCol.appendChild(finalHeader);
+    
+    finalRound.forEach((match, mIdx) => {
+      renderSingleMatchNode(finalCol, match, finalRoundIdx, mIdx, prefix, canvasId, isLive);
     });
+    centerFinal.appendChild(finalCol);
 
-    container.appendChild(col);
-  });
+    splitContainer.appendChild(leftBracket);
+    splitContainer.appendChild(centerFinal);
+    splitContainer.appendChild(rightBracket);
+    container.appendChild(splitContainer);
+  } else {
+    const matchCount = rounds[0] ? rounds[0].length : 0;
+    const minHeightPerMatch = 150; // Spacing is crucial here. Let's use 150px per match card.
+    const requiredHeight = Math.max(matchCount * minHeightPerMatch, 600);
+
+    rounds.forEach((round, rIdx) => {
+      const col = document.createElement('div');
+      col.className = 'round-column';
+      col.style.height = `${requiredHeight}px`;
+
+      const header = document.createElement('div');
+      header.className = 'round-title-header';
+      const isFinal = rIdx === rounds.length - 1;
+      if (prefix === 'w') {
+        header.textContent = isFinal
+          ? (state.bracketType === 'double' ? 'Winners Final' : 'Final')
+          : `Round ${rIdx + 1}`;
+      } else {
+        header.textContent = isFinal ? 'Losers Final' : `L-Round ${rIdx + 1}`;
+      }
+      col.appendChild(header);
+
+      if (rIdx === 0) {
+        const activeMatches = [];
+        const byeMatches = [];
+        round.forEach((match, mIdx) => {
+          if (hasBye(match)) byeMatches.push({ match, mIdx });
+          else activeMatches.push({ match, mIdx });
+        });
+
+        activeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(col, match, rIdx, mIdx, prefix, canvasId, isLive));
+        if (byeMatches.length > 0) {
+          const sep = document.createElement('div');
+          sep.className = 'bye-separator';
+          sep.textContent = 'Bye Matches';
+          col.appendChild(sep);
+        }
+        byeMatches.forEach(({ match, mIdx }) => renderSingleMatchNode(col, match, rIdx, mIdx, prefix, canvasId, isLive));
+      } else {
+        round.forEach((match, mIdx) => {
+          renderSingleMatchNode(col, match, rIdx, mIdx, prefix, canvasId, isLive);
+        });
+      }
+
+      container.appendChild(col);
+    });
+  }
 }
 
 function renderGrandFinalInto(container, canvasId, isLive) {
@@ -2993,3 +3638,79 @@ function drawUnifiedConnectors(canvas, svgId, canvasId) {
     drawSingleConnectorLine(svg, canvas, gfId, gfrId);
   }
 }
+
+function drawConnectorGroup(svg, canvas, prefix, canvasId, rounds) {
+  if (!svg || !rounds) return;
+
+  rounds.forEach((round, rIdx) => {
+    if (rIdx >= rounds.length - 1) return;
+
+    round.forEach((match, mIdx) => {
+      const startId = `mn-${prefix}-${canvasId}-${rIdx}-${mIdx}`;
+      const nextMi = (prefix === 'l')
+        ? ((rIdx % 2 === 0) ? mIdx : Math.floor(mIdx / 2))
+        : Math.floor(mIdx / 2);
+      const endId = `mn-${prefix}-${canvasId}-${rIdx + 1}-${nextMi}`;
+
+      const startNode = document.getElementById(startId);
+      const endNode   = document.getElementById(endId);
+      if (!startNode || !endNode) return;
+
+      const s = getOffsetRelativeTo(startNode, canvas);
+      const e = getOffsetRelativeTo(endNode, canvas);
+
+      const x1 = s.left + startNode.offsetWidth;
+      const y1 = s.top  + startNode.offsetHeight / 2;
+      const x2 = e.left;
+      const y2 = e.top  + endNode.offsetHeight  / 2;
+      const midX = (x1 + x2) / 2;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('class', `connector-line ${match.status === 'in-progress' ? 'active' : ''} ${match.status === 'completed' ? 'done' : ''}`);
+      svg.appendChild(path);
+    });
+  });
+}
+
+function drawSingleConnectorLine(svg, canvas, startId, endId) {
+  const startNode = document.getElementById(startId);
+  const endNode   = document.getElementById(endId);
+  if (!startNode || !endNode) return;
+
+  const s = getOffsetRelativeTo(startNode, canvas);
+  const e = getOffsetRelativeTo(endNode, canvas);
+
+  const x1 = s.left + startNode.offsetWidth;
+  const y1 = s.top  + startNode.offsetHeight / 2;
+  const x2 = e.left;
+  const y2 = e.top  + endNode.offsetHeight  / 2;
+  const midX = (x1 + x2) / 2;
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('class', 'connector-line');
+  svg.appendChild(path);
+}
+
+function createDragPreview(e, name) {
+  const oldPreview = document.getElementById('custom-drag-preview');
+  if (oldPreview) oldPreview.remove();
+
+  const preview = document.createElement('div');
+  preview.id = 'custom-drag-preview';
+  preview.className = 'custom-drag-preview-card';
+  preview.innerHTML = `<i class="fa-solid fa-user-tag" style="margin-right:0.5rem"></i> <span>${name}</span>`;
+  document.body.appendChild(preview);
+
+  if (e.dataTransfer && typeof e.dataTransfer.setDragImage === 'function') {
+    e.dataTransfer.setDragImage(preview, 20, 20);
+  }
+
+  setTimeout(() => {
+    preview.style.opacity = '0';
+  }, 0);
+}
+

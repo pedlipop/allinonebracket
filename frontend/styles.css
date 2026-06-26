@@ -784,15 +784,23 @@ select {
   justify-content: space-around;
   height: 100%;
   min-width: 250px;
+  position: relative;
+  padding-top: 50px;
+  box-sizing: border-box;
 }
 .round-title-header {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: 100%;
   font-size: 0.85rem;
   color: var(--accent-cyan);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
+  pointer-events: none;
 }
 
 .match-node {
@@ -802,6 +810,7 @@ select {
   padding: 0.5rem;
   width: 260px;
   position: relative;
+  z-index: 1;
   box-shadow: var(--shadow-sm);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
@@ -811,6 +820,23 @@ select {
   border-color: rgba(255, 255, 255, 0.2);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
+.match-node.drag-active {
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 15px rgba(0, 210, 255, 0.5) !important;
+  outline: 2px dashed var(--accent-cyan) !important;
+  transform: translateY(-2px);
+}
+.match-node.dragging {
+  transition: none !important;
+}
+.match-node-placeholder {
+  width: 260px;
+  height: 95px;
+  visibility: hidden;
+  margin: 0;
+  flex-shrink: 0;
+}
+
 
 /* Match node connector lines (horizontal & vertical) */
 .match-node::after {
@@ -924,8 +950,10 @@ select {
   position: absolute;
   top: 0; left: 0;
   width: 100%; height: 100%;
+  overflow: visible;
+  background: transparent;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
 }
 .connector-line {
   fill: none;
@@ -1653,7 +1681,7 @@ select {
   stroke: rgba(46, 213, 115, 0.3);
 }
 .connector-line {
-  stroke: rgba(255, 255, 255, 0.12);
+  stroke: rgba(255, 255, 255, 0.35);
   stroke-width: 2px;
   fill: none;
   transition: stroke 0.3s;
@@ -2282,4 +2310,114 @@ select {
   align-items: center;
   height: 100%;
 }
+
+/* Drag and Drop Seeding Styles */
+.player-item-row[draggable="true"] {
+  cursor: grab;
+}
+.player-item-row.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+.unseeded-placeholder {
+  color: var(--text-muted);
+  border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  transition: all 0.2s ease;
+}
+.team-row.unseeded-placeholder:hover {
+  background: rgba(0, 210, 255, 0.05) !important;
+  border-color: var(--accent-cyan) !important;
+}
+
+/* Bye Matches Section Layout */
+.bye-separator {
+  width: 100%;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 2rem 0 1rem 0;
+  padding: 0.5rem 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Left / Right Split Layout Styles */
+.split-bracket-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 2rem;
+}
+.left-bracket, .right-bracket {
+  display: flex;
+  flex-direction: row;
+  gap: 6rem;
+  align-items: center;
+}
+.center-final {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 300px;
+}
+
+/* Custom Drag Preview Card following the cursor */
+.custom-drag-preview-card {
+  position: fixed;
+  top: -200px;
+  left: -200px;
+  background: linear-gradient(135deg, var(--accent-cyan), #0084ff) !important;
+  color: #050609 !important;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 10px 25px rgba(0, 210, 255, 0.4);
+  pointer-events: none;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+}
+
+/* Pulsing drop target animations for valid matches */
+@keyframes pulse-drop-target {
+  0% {
+    border-color: rgba(0, 210, 255, 0.2);
+    box-shadow: 0 0 0 rgba(0, 210, 255, 0);
+  }
+  50% {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(0, 210, 255, 0.3);
+  }
+  100% {
+    border-color: rgba(0, 210, 255, 0.2);
+    box-shadow: 0 0 0 rgba(0, 210, 255, 0);
+  }
+}
+
+body.drag-active-participant .team-row.unseeded-placeholder {
+  animation: pulse-drop-target 1.5s infinite;
+  border: 1px dashed var(--accent-cyan) !important;
+}
+
+body.drag-active-participant .team-row.unseeded-placeholder.drag-over {
+  animation: none;
+  background: rgba(0, 210, 255, 0.2) !important;
+  border-color: var(--accent-cyan) !important;
+  border-style: solid !important;
+  box-shadow: 0 0 20px rgba(0, 210, 255, 0.5) !important;
+  transform: scale(1.03);
+}
+
 
