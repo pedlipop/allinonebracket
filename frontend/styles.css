@@ -120,7 +120,7 @@ input[readonly] {
 .app-header {
   height: 70px;
   border-bottom: 1px solid var(--border-color);
-  background: rgba(10, 11, 16, 0.8);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
@@ -432,7 +432,7 @@ select {
   flex-direction: column;
   gap: 1.5rem;
   overflow-y: auto;
-  background: rgba(10, 11, 16, 0.5);
+  background: var(--bg-panel);
 }
 
 .panel {
@@ -668,12 +668,12 @@ select {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #0d0f17;
+  background: var(--bg-app);
 }
 
 .main-tabs {
   display: flex;
-  background: rgba(10, 11, 16, 0.7);
+  background: var(--bg-panel);
   border-bottom: 1px solid var(--border-color);
   padding: 0 1.5rem;
 }
@@ -754,7 +754,7 @@ select {
 
 .bracket-canvas-container {
   flex: 1;
-  background: #07080d;
+  background: var(--bg-app);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-md);
   overflow: hidden;
@@ -912,7 +912,7 @@ select {
   margin-bottom: 0;
 }
 .team-row:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.04);
 }
 .team-row.winner {
   background: rgba(46, 213, 115, 0.1);
@@ -944,7 +944,7 @@ select {
 /* Direct input styling for empty BYE slots */
 .bye-direct-input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(255, 165, 2, 0.08);
   border: 1px dashed var(--warning);
   color: var(--warning);
   font-size: 0.75rem;
@@ -1339,7 +1339,7 @@ select {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(10, 11, 16, 0.6);
+  background: var(--bg-panel);
   padding: 0.5rem 1rem;
   border-radius: var(--border-radius-sm);
   border: 1px solid var(--border-color);
