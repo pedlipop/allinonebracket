@@ -50,6 +50,8 @@ const TRANSLATIONS = {
     live: "Live",
     winners_bracket: "Winners Bracket",
     losers_bracket: "Losers Bracket",
+    standard_layout: "Left to Right",
+    split_layout: "Double Sided",
     
     // Statuses
     running: "In Progress",
@@ -242,6 +244,8 @@ const TRANSLATIONS = {
     live: "实时",
     winners_bracket: "胜者组对阵",
     losers_bracket: "败者组对阵",
+    standard_layout: "从左至右",
+    split_layout: "双侧分布",
     
     // Statuses
     running: "进行中",
@@ -465,6 +469,7 @@ let timerInterval = null;
 let activeSelectedMatch = null; // { bracket: 'w'|'l'|'gf', roundIndex, matchIndex }
 let editTargetPlayerIndex = null;
 let bracketViewMode = 'double';     // 'single' or 'double'
+let singleBracketLayoutMode = 'standard'; // 'standard' or 'split'
 let bracketSingleActive = 'winners'; // 'winners' or 'losers'
 let participantsCurrentPage = 1;
 
@@ -1496,27 +1501,37 @@ function updateBracketViewClasses() {
   
   const hostToggleCont = document.getElementById('bracket-view-toggle-container');
   const hostSubToggleCont = document.getElementById('bracket-sub-toggle-container');
+  const hostSingleLayoutCont = document.getElementById('single-layout-toggle-container');
   const liveToggleCont = document.getElementById('live-bracket-view-toggle-container');
   const liveSubToggleCont = document.getElementById('live-bracket-sub-toggle-container');
+  const liveSingleLayoutCont = document.getElementById('live-single-layout-toggle-container');
 
   if (hostToggleCont) hostToggleCont.classList.toggle('hidden', !isDouble);
   if (hostSubToggleCont) hostSubToggleCont.classList.toggle('hidden', !isDouble || bracketViewMode !== 'single');
+  if (hostSingleLayoutCont) hostSingleLayoutCont.classList.toggle('hidden', isDouble);
   if (liveToggleCont) liveToggleCont.classList.toggle('hidden', !isDouble);
   if (liveSubToggleCont) liveSubToggleCont.classList.toggle('hidden', !isDouble || bracketViewMode !== 'single');
+  if (liveSingleLayoutCont) liveSingleLayoutCont.classList.toggle('hidden', isDouble);
 
-  const updateButtons = (mode, singleActive) => {
+  const updateButtons = (mode, singleActive, layoutMode) => {
     document.getElementById('btn-view-single')?.classList.toggle('active', mode === 'single');
     document.getElementById('btn-view-double')?.classList.toggle('active', mode === 'double');
     document.getElementById('btn-sub-winners')?.classList.toggle('active', singleActive === 'winners');
     document.getElementById('btn-sub-losers')?.classList.toggle('active', singleActive === 'losers');
 
+    document.getElementById('btn-layout-standard')?.classList.toggle('active', layoutMode === 'standard');
+    document.getElementById('btn-layout-split')?.classList.toggle('active', layoutMode === 'split');
+
     document.getElementById('btn-live-view-single')?.classList.toggle('active', mode === 'single');
     document.getElementById('btn-live-view-double')?.classList.toggle('active', mode === 'double');
     document.getElementById('btn-live-sub-winners')?.classList.toggle('active', singleActive === 'winners');
     document.getElementById('btn-live-sub-losers')?.classList.toggle('active', singleActive === 'losers');
+
+    document.getElementById('btn-live-layout-standard')?.classList.toggle('active', layoutMode === 'standard');
+    document.getElementById('btn-live-layout-split')?.classList.toggle('active', layoutMode === 'split');
   };
 
-  updateButtons(bracketViewMode, bracketSingleActive);
+  updateButtons(bracketViewMode, bracketSingleActive, singleBracketLayoutMode);
   const hostWinnersSect = document.getElementById('winners-bracket-section');
   const hostLosersSect = document.getElementById('losers-bracket-section');
   const hostGfSect = document.getElementById('grand-final-container');
@@ -1578,17 +1593,37 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
 
   // Calculate canvas dimensions dynamically
   const numRounds = rounds.length;
-  const canvasWidth = numRounds * roundWidth + 100;
+  const isSplit = prefix === 'w' && state && state.bracket && state.bracket.type === 'single' && singleBracketLayoutMode === 'split';
+  const totalCols = isSplit ? (2 * numRounds - 1) : numRounds;
+  const canvasWidth = totalCols * roundWidth + 100;
 
   // Winners & Losers Bracket layout logic (recursive vertical centering)
   // Store computed top coordinates in match objects for quick retrieval
   rounds.forEach((round, rIdx) => {
     round.forEach((match, mIdx) => {
       let topVal;
+      let colIdx;
+
+      if (isSplit) {
+        if (rIdx === numRounds - 1) {
+          colIdx = numRounds - 1;
+        } else if (mIdx < round.length / 2) {
+          colIdx = rIdx;
+        } else {
+          colIdx = (2 * numRounds - 2) - rIdx;
+        }
+      } else {
+        colIdx = rIdx;
+      }
+
       if (prefix === 'w') {
         if (rIdx === 0) {
-          // Round 0: spaced evenly
-          topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap);
+          if (isSplit) {
+            const localMIdx = mIdx < round.length / 2 ? mIdx : (mIdx - round.length / 2);
+            topVal = headerHeight + localMIdx * (matchHeight + initialVerticalGap * 2.2);
+          } else {
+            topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap);
+          }
         } else {
           // Subsequent rounds: center parent card between its two child cards
           const child1Top = rounds[rIdx - 1][mIdx * 2]?.yCoord;
@@ -1598,19 +1633,21 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
           } else if (child1Top !== undefined) {
             topVal = child1Top;
           } else {
-            topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * Math.pow(2, rIdx));
+            if (isSplit) {
+              const localMIdx = mIdx < round.length / 2 ? mIdx : (mIdx - round.length / 2);
+              topVal = headerHeight + localMIdx * (matchHeight + initialVerticalGap * Math.pow(2, rIdx) * 2.2);
+            } else {
+              topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * Math.pow(2, rIdx));
+            }
           }
         }
       } else {
         // Losers Bracket
         if (rIdx === 0) {
-          // Space LR0 matches wider (same spacing as Winners Round 1 since it has half the matches of WR0)
           topVal = headerHeight + mIdx * (matchHeight + initialVerticalGap * 2.5 + matchHeight / 2);
         } else if (rIdx % 2 === 1) {
-          // External Round: same number of matches as previous losers round. Align directly.
           topVal = rounds[rIdx - 1][mIdx]?.yCoord;
         } else {
-          // Internal Round: half the number of matches as previous losers round. Center between them.
           const child1Top = rounds[rIdx - 1][mIdx * 2]?.yCoord;
           const child2Top = rounds[rIdx - 1][mIdx * 2 + 1]?.yCoord;
           if (child1Top !== undefined && child2Top !== undefined) {
@@ -1622,14 +1659,23 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
           }
         }
       }
+
+      if (match.isThirdPlace) {
+        const finalMatch = round[0];
+        if (finalMatch) {
+          topVal = finalMatch.yCoord + matchHeight + 60;
+        }
+      }
+
       match.yCoord = topVal;
-      match.xCoord = rIdx * roundWidth;
+      match.xCoord = colIdx * roundWidth;
     });
   });
 
   // Determine maximum height to scale canvas container bounds
   let maxContentHeight = 600;
-  rounds[0].forEach((match) => {
+  rounds[0].forEach((match, mIdx) => {
+    if (isSplit && mIdx >= rounds[0].length / 2) return;
     const bottom = match.yCoord + matchHeight + 100;
     if (bottom > maxContentHeight) maxContentHeight = bottom;
   });
@@ -1645,12 +1691,13 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
   svg.setAttribute('height', maxContentHeight);
   canvas.appendChild(svg);
 
-  // Render rounds and match nodes
-  rounds.forEach((round, rIdx) => {
+  // Render rounds columns in order of visual columns
+  const columns = [];
+  for (let c = 0; c < totalCols; c++) {
     const col = document.createElement('div');
     col.className = 'round-column';
     col.style.position = 'absolute';
-    col.style.left = `${rIdx * roundWidth}px`;
+    col.style.left = `${c * roundWidth}px`;
     col.style.top = '0px';
     col.style.width = `${matchWidth}px`;
     col.style.height = '100%';
@@ -1661,17 +1708,52 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
     header.style.top = '10px';
     header.style.width = '100%';
     header.style.margin = '0';
-    const isFinal = rIdx === rounds.length - 1;
+
+    let colRoundIdx;
+    if (isSplit) {
+      if (c === numRounds - 1) {
+        colRoundIdx = numRounds - 1;
+      } else if (c < numRounds - 1) {
+        colRoundIdx = c;
+      } else {
+        colRoundIdx = (2 * numRounds - 2) - c;
+      }
+    } else {
+      colRoundIdx = c;
+    }
+
+    const isFinal = colRoundIdx === numRounds - 1;
     if (prefix === 'w') {
       header.textContent = isFinal
         ? (state.bracket.type === 'double' ? getTranslation('winners_final') : getTranslation('final'))
-        : t('round_num', { num: rIdx + 1 });
+        : t('round_num', { num: colRoundIdx + 1 });
     } else {
-      header.textContent = isFinal ? getTranslation('losers_final') : t('l_round_num', { num: rIdx + 1 });
+      header.textContent = isFinal ? getTranslation('losers_final') : t('l_round_num', { num: colRoundIdx + 1 });
     }
     col.appendChild(header);
+    canvas.appendChild(col);
+    columns.push(col);
+  }
 
+  // Render match nodes into their corresponding columns
+  rounds.forEach((round, rIdx) => {
     round.forEach((match, mIdx) => {
+      let colIdx;
+      if (isSplit) {
+        if (rIdx === numRounds - 1) {
+          colIdx = numRounds - 1;
+        } else if (mIdx < round.length / 2) {
+          colIdx = rIdx;
+        } else {
+          colIdx = (2 * numRounds - 2) - rIdx;
+        }
+      } else {
+        colIdx = rIdx;
+      }
+
+      const col = columns[colIdx];
+      if (!col) return;
+
       const p1 = getPlayerInfo(match.players[0]);
       const p2 = getPlayerInfo(match.players[1]);
 
@@ -1751,8 +1833,7 @@ function renderBracketCanvas(canvasId, rounds, prefix, isLive) {
       `;
       col.appendChild(node);
     });
-
-    canvas.appendChild(col);
+  });
   });
 
   // Draw connectors after layout paint
@@ -1769,6 +1850,8 @@ function drawConnectors(canvas, svgId, rounds, prefix, canvasId) {
   svg.innerHTML = '';
   const matchWidth = 260;
   const matchHeight = 110;
+
+  const isSplit = prefix === 'w' && state && state.bracket && state.bracket.type === 'single' && singleBracketLayoutMode === 'split';
 
   rounds.forEach((round, rIdx) => {
     if (rIdx >= rounds.length - 1) return; // No connector from last round
@@ -1789,13 +1872,21 @@ function drawConnectors(canvas, svgId, rounds, prefix, canvasId) {
       if (!startNode || !endNode) return;
 
       // Compute positions relative to canvas element (not viewport)
-      // This is NOT affected by pan/zoom transforms
       const s = getOffsetRelativeTo(startNode, canvas);
       const e = getOffsetRelativeTo(endNode, canvas);
 
-      const x1 = s.left + startNode.offsetWidth;
+      const isStartOnRight = isSplit && mIdx >= round.length / 2;
+
+      let x1, x2;
+      if (isStartOnRight) {
+        x1 = s.left;
+        x2 = e.left + endNode.offsetWidth;
+      } else {
+        x1 = s.left + startNode.offsetWidth;
+        x2 = e.left;
+      }
+
       const y1 = s.top  + startNode.offsetHeight / 2;
-      const x2 = e.left;
       const y2 = e.top  + endNode.offsetHeight  / 2;
       const midX = (x1 + x2) / 2;
 
@@ -3139,6 +3230,22 @@ function setupEventListeners() {
   document.getElementById('btn-live-view-double')?.addEventListener('click', () => setViewMode('double'));
   document.getElementById('btn-live-sub-winners')?.addEventListener('click', () => setSingleActive('winners'));
   document.getElementById('btn-live-sub-losers')?.addEventListener('click', () => setSingleActive('losers'));
+
+  // Single Elimination Layout Toggles
+  const setLayoutMode = (mode) => {
+    singleBracketLayoutMode = mode;
+    updateBracketViewClasses();
+    if (document.getElementById('player-live-view').classList.contains('active')) {
+      renderBracketView('live');
+    } else {
+      renderHostView();
+    }
+  };
+
+  document.getElementById('btn-layout-standard')?.addEventListener('click', () => setLayoutMode('standard'));
+  document.getElementById('btn-layout-split')?.addEventListener('click', () => setLayoutMode('split'));
+  document.getElementById('btn-live-layout-standard')?.addEventListener('click', () => setLayoutMode('standard'));
+  document.getElementById('btn-live-layout-split')?.addEventListener('click', () => setLayoutMode('split'));
 
   // Export CSV
   document.getElementById('btn-export-csv').addEventListener('click', () => {

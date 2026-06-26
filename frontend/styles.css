@@ -2,8 +2,9 @@
    DESIGN SYSTEM & VARIABLES
    ========================================================================== */
 :root {
-  --font-primary: 'Outfit', sans-serif;
-  --font-secondary: 'Plus Jakarta Sans', sans-serif;
+  --font-primary: 'Noto Sans', 'Source Han Sans SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --font-secondary: 'Noto Sans', 'Source Han Sans SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --font-display: 'Inter', 'Source Han Sans SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
 
   /* Colors - Clean White Tone Theme */
   --bg-app: #f8fafc;
@@ -55,6 +56,20 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
   min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6, 
+.tab-section-title, 
+.panel-title, 
+.modal-header h3, 
+.tc-name, 
+.tab-btn, 
+.btn-primary, 
+.btn-glow, 
+.btn-secondary, 
+.btn-view-toggle,
+.status-badge {
+  font-family: var(--font-display);
 }
 
 input, select, button {
