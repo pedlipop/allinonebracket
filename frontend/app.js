@@ -966,13 +966,15 @@ function renderSidebarPlayers() {
   const countBadge = document.getElementById('player-count-badge');
   if (!listEl || !state) return;
 
+  const actualPlayersCount = state.players.filter(p => p.status !== 'bye' && p.name !== 'BYE').length;
   const actualSize = computeActualBracketSize();
   const isAuto = !state.bracketSizeConfig || state.bracketSizeConfig === 'auto';
-  if (countBadge) countBadge.textContent = isAuto ? `${state.players.length}` : `${state.players.length}/${actualSize}`;
+  if (countBadge) countBadge.textContent = isAuto ? `${actualPlayersCount}` : `${actualPlayersCount}/${actualSize}`;
 
   const searchVal = (document.getElementById('player-search')?.value || '').toLowerCase();
   const filtered = state.players.filter(p =>
-    p.name.toLowerCase().includes(searchVal) || p.companyId.toLowerCase().includes(searchVal)
+    p.status !== 'bye' && p.name !== 'BYE' &&
+    (p.name.toLowerCase().includes(searchVal) || p.companyId.toLowerCase().includes(searchVal))
   );
 
   listEl.innerHTML = '';
@@ -2382,6 +2384,7 @@ function renderParticipantsTable() {
   const filteredPlayers = state.players
     .map((p, idx) => ({ ...p, originalIndex: idx }))
     .filter(p => {
+      if (p.status === 'bye' || p.name === 'BYE') return false;
       const matchesSearch = p.name.toLowerCase().includes(searchVal) || p.companyId.toLowerCase().includes(searchVal);
       const matchesFilter = filterVal === 'all' || (p.status || 'active') === filterVal;
       return matchesSearch && matchesFilter;
