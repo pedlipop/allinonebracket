@@ -1,9 +1,9 @@
 /**
- * Apex Bracket - Tournament Engine v2.0
+ * CNGR Tournament Engine v2.0
  * Multi-Tournament | Double Elimination | Fixed Connectors | Full Feature Set
  */
 
-const STORAGE_KEY = 'apex_bracket_v2';
+const STORAGE_KEY = 'cngr_tournament_engine_v2';
 
 // ==========================================================================
 // TRANSLATIONS (i18n)
@@ -18,7 +18,7 @@ const TRANSLATIONS = {
     enter_password: "Enter password",
     sign_in: "Sign In",
     tournament_hub: "Tournament Hub",
-    welcome_hub: "Welcome to <span>CNGR TOURNAMENT apex bracket</span>",
+    welcome_hub: "Welcome to <span>CNGR Tournament Engine</span>",
     hub_subtitle: "Create a new tournament or continue an existing one",
     create_new_tournament: "Create New Tournament",
     create_new_desc: "Start fresh with a new bracket configuration",
@@ -212,7 +212,7 @@ const TRANSLATIONS = {
     enter_password: "输入密码",
     sign_in: "登录",
     tournament_hub: "赛事中心",
-    welcome_hub: "欢迎使用 <span>CNGR TOURNAMENT apex bracket</span>",
+    welcome_hub: "欢迎使用 <span>CNGR Tournament Engine</span>",
     hub_subtitle: "创建新赛事或继续进行已有赛事",
     create_new_tournament: "创建新赛事",
     create_new_desc: "从头开始配置新的对阵表",
@@ -399,7 +399,7 @@ const TRANSLATIONS = {
   }
 };
 
-let currentLang = localStorage.getItem('apex_bracket_lang') || 'en';
+let currentLang = localStorage.getItem('cngr_tournament_engine_lang') || 'en';
 
 function getTranslation(key) {
   if (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) {
@@ -2853,7 +2853,7 @@ function setupEventListeners() {
       const lang = btn.getAttribute('data-lang');
       if (lang && lang !== currentLang) {
         currentLang = lang;
-        localStorage.setItem('apex_bracket_lang', lang);
+        localStorage.setItem('cngr_tournament_engine_lang', lang);
         translatePage();
         
         // Refresh views to translate dynamic parts
@@ -3307,7 +3307,7 @@ function setupEventListeners() {
     });
     const link = Object.assign(document.createElement('a'), {
       href: encodeURI(csv),
-      download: `apex_bracket_${Date.now()}.csv`
+      download: `cngr_tournament_engine_${Date.now()}.csv`
     });
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
   });
